@@ -1,9 +1,16 @@
+import { authenticateRequest } from "@/lib/apiAuth";
 import { Rekognition } from "@aws-sdk/client-rekognition";
 
 // https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/rekognition/command/DetectLabelsCommand/
 const client = new Rekognition();
 
 export async function POST(req: Request) {
+    const { msg, status } = await authenticateRequest(req);
+
+    if (status !== 200) {
+        return Response.json({ error: msg }, { status });
+    }
+
 	const { image_url } = await req.json();
 
 	if (!image_url) {

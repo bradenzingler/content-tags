@@ -1,6 +1,6 @@
 import { getByApiKey, incrementRequestCount, resetRequestWindow } from "./ddb";
 
-const RATE_LIMIT = 3;
+const RATE_LIMIT = 10;
 
 export async function authenticateRequest(req: Request) {
     const apiKey = req.headers.get("x-api-key");

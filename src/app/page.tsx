@@ -2,12 +2,13 @@
 import Link from "next/link";
 import { FaTags } from "react-icons/fa";
 import Demo from "./components/hero-section/Demo";
+import PricingSection from "./components/pricing-section/page";
 
 export default function Home() {
 
 	return (
 		<main className="flex flex-col justify-center items-center mt-36 mb-24">
-			<header className="flex flex-col lg:flex-row w-11/12 lg:w-10/12 xl:w-7/12 items-center justify-between gap-12">
+			<header className="flex flex-col mb-24 md:mb-72 lg:flex-row w-11/12 lg:w-10/12 xl:w-7/12 items-center justify-between gap-12">
 				{/* Left side - Hero content */}
 				<div className="w-full lg:w-1/2">
 					<h1 className="text-5xl tracking-tighter md:text-6xl font-extrabold text-white">
@@ -29,6 +30,8 @@ export default function Home() {
 
 				<Demo />
 			</header>
+
+            <PricingSection />
 		</main>
 	);
 }

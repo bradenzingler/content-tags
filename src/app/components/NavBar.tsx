@@ -35,6 +35,15 @@ export default function NavBar() {
 							Docs
 						</Link>
 					</li>
+                    <li>
+						<Link
+							href={"#pricing"}
+							title="Read the docs"
+							className="text-white/85 hover:text-white"
+						>
+							Pricing
+						</Link>
+					</li>
                     {isSignedIn && (
                         <li>
                             <Link

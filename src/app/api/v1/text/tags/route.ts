@@ -53,6 +53,8 @@ export async function POST(req: Request) {
             },
             { role: "user", content: text.trim() },
         ],
+        temperature: 0.5,
+        seed: 42,
     });
 
 	const tags = response.choices[0].message.content?.split(",").map((tag) => tag.trim().toLowerCase()) || [];

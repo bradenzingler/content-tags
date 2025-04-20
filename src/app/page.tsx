@@ -1,22 +1,33 @@
+"use client";
 import Link from "next/link";
+import { FaTags } from "react-icons/fa";
+import Demo from "./components/hero-section/Demo";
 
 export default function Home() {
+
 	return (
-		<main className="flex flex-col justify-center items-center mt-56">
-			<header className="flex flex-col w-full md:w-3/4 lg:w-1/2 items-center justify-center">
-				<h1 className="text-4xl tracking-tighter text-center md:text-6xl font-extrabold text-white">
-					Turn content into context
-				</h1>
-				<p className="text-white/75 text-center mt-4 md:text-xl">
-					Generate relevant tags for text and images with one simple
-					API call.
-				</p>
-				<Link
-					href={"/docs"}
-					className="bg-teal-500 hover:bg-teal-500/85 mt-8 text-white/85 font-semibold lg:text-lg rounded-full px-2 py-1"
-				>
-					See the docs
-				</Link>
+		<main className="flex flex-col justify-center items-center mt-36 mb-24">
+			<header className="flex flex-col lg:flex-row w-11/12 lg:w-10/12 xl:w-7/12 items-center justify-between gap-12">
+				{/* Left side - Hero content */}
+				<div className="w-full lg:w-1/2">
+					<h1 className="text-5xl tracking-tighter md:text-6xl font-extrabold text-white">
+						Turn content into context
+					</h1>
+					<h2 className="text-white/75 mt-4 mb-8 md:text-xl">
+						Generate relevant tags for text and images with one
+						simple API call.
+					</h2>
+					<Link
+						href={"/sign-in"}
+						className="bg-teal-600 hover:bg-teal-600/85 active:bg-teal-600/85
+                   text-white font-semibold lg:text-lg rounded-lg px-6 py-3 inline-flex items-center"
+					>
+						<FaTags className="mr-2 h-5 w-5" />
+						Tag my content
+					</Link>
+				</div>
+
+				<Demo />
 			</header>
 		</main>
 	);

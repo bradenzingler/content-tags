@@ -23,7 +23,7 @@ export async function POST(req: Request) {
 			Bytes: new Uint8Array(imageArrayBuffer),
 		},
 		MaxLabels: 10,
-		MinConfidence: 70,
+		MinConfidence: 80,
 	});
 
 	const tags = labels.Labels?.map((label) => label.Name?.toLowerCase()) || [];

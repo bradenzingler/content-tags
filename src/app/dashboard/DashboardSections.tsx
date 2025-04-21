@@ -6,7 +6,6 @@ import { LuKeyRound } from "react-icons/lu";
 import UsageBar from "../components/dashboard/UsageBar";
 import NoApiKey from "../components/dashboard/NoApiKey";
 import CreateApiKeyModal from "../components/dashboard/CreateApiKey";
-import { useUser } from "@clerk/nextjs";
 
 export default function DashboardSections({
 	apiKeyStart,
@@ -15,6 +14,7 @@ export default function DashboardSections({
 	totalRequests,
 	refillDay,
 	lastRefilled,
+    planName,
 	createNewKey,
 }: {
 	apiKeyStart: string;
@@ -23,9 +23,9 @@ export default function DashboardSections({
 	totalRequests: number;
 	refillDay: number;
 	lastRefilled: number;
+    planName: string;
 	createNewKey: () => Promise<{ keyId: string, key: string }>;
 }) {
-    const user = useUser();
 	const [tab, setCurrentTab] = useState("usage");
     const [createdNewApiKey, setCreatedNewApiKey] = useState(false);
     const [apiKey, setApiKey] = useState("");
@@ -141,24 +141,51 @@ export default function DashboardSections({
 				) : tab === "api-keys" ? (
 					<section className="flex flex-col">
 						<h1 className="text-white text-2xl tracking-tight font-semibold">
-							API keys
+							Your API key
 						</h1>
 						{apiKeyId ? (
-							<div>
-								<p>{apiKeyStart}</p>
+							<div className="mt-8">
+                                <p className="text-white/85 mb-2">User your API key in requests with the x-api-key header.</p>
+								<code className="text-white/85 border-white/50 border px-4 py-1 rounded-md">
+                                    {apiKeyStart}*******
+                                </code>
 							</div>
 						) : (
 							<NoApiKey createNewKey={createApiKey} />
 						)}
 					</section>
 				) : (
-					<section className="flex">
+					<section className="flex flex-col">
 						<h1 className="text-gray-200 text-2xl tracking-tight font-semibold">
 							Billing
 						</h1>
+                        <p className="text-gray-100 mt-4">
+                            You are currently on the 
+                            <span className="capitalize">
+                                {" "}{planName}{" "}
+                            </span> 
+                            plan.
+                            <br />
+                            You can upgrade your plan in the future.
+                            <br />
+                        </p>
 					</section>
 				)}
 			</div>
 		</div>
 	);
+}
+
+
+function getPlanCost(planName: string) {
+    switch (planName) {
+        case "free":
+            return 0;
+        case "pro":
+            return 10;
+        case "business":
+            return 55;
+        default:
+            return 0;
+    }
 }

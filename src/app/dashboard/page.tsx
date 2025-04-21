@@ -34,6 +34,7 @@ export default async function DashboardPage() {
                 remainingRequests={apiKeyResult?.result?.remaining ?? 0}
                 refillDay={apiKeyResult?.result?.refill?.refillDay ?? 0}
                 lastRefilled={apiKeyResult?.result?.refill?.lastRefillAt ?? 0}
+                planName={apiKeyResult?.result?.meta?.tier ?? "free"}
 			/>
 		</main>
 	);

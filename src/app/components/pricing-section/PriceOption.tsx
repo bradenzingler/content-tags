@@ -24,7 +24,7 @@ export default async function PriceOption({
 				{title}
 			</h3>
 			<p className="text-white/85 text-sm font-bold mb-4">
-				{numCredits.toLocaleString()} credits per month
+				{numCredits.toLocaleString()} credits/month
 			</p>
 			<p className="text-white/75 mb-6">{description}</p>
 			<div className="flex items-end gap-1 mb-6">

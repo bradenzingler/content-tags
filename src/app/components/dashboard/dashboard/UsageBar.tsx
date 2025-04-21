@@ -17,7 +17,7 @@ const UsageBar: React.FC<UsageBarProps> = ({
 		<div className="w-full">
 			<div className="flex justify-between items-center mb-2">
 				<span className="text-sm font-medium text-gray-400">
-					{remainingRequests} requests remaining
+					{remainingRequests} credits remaining
 				</span>
 				<span className="text-sm font-medium text-gray-400">
 					{usagePercentage}%

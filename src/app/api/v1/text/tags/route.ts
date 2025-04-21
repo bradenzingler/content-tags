@@ -1,8 +1,31 @@
+import { API_ID, unkey } from "@/lib/unkey";
+import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_TEXT_API_KEY });
+const TEXT_CREDIT_COST = 1;
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+    const apiKey =
+		req.headers.get("Authorization")?.replace("Bearer ", "") ?? null;
+	if (apiKey === null) {
+		return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+	}
+
+    const res = await unkey.keys.verify({
+		key: apiKey,
+		remaining: { cost: TEXT_CREDIT_COST },
+		apiId: API_ID,
+	});
+
+    if (res.error) {
+        console.error("An error occurred with Unkey:", res.error);
+        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    }
+
+    if (!res.result.valid) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
 	const { text } = await req.json();
 

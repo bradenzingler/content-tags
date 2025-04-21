@@ -7,18 +7,23 @@ export default function PriceOption({
 	title,
 	description,
 	features,
+	numCredits,
 }: {
 	price: string;
 	title: string;
 	description: string;
 	features: string[];
+	numCredits: number;
 }) {
 	const auth = useAuth();
 	return (
 		<div className="bg-white/5 w-11/12 mx-auto lg:w-1/4 lg:mx-0 rounded-lg p-8 flex flex-col justify-between">
-			<h3 className="text-3xl text-white font-bold tracking-tight mb-4">
+			<h3 className="text-3xl text-white font-bold tracking-tight mb-1">
 				{title}
 			</h3>
+			<p className="text-white/85 text-sm font-bold mb-4">
+				{numCredits.toLocaleString()} credits per month
+			</p>
 			<p className="text-white/75 mb-6">{description}</p>
 			<div className="flex items-end gap-1 mb-6">
 				<span className="text-5xl font-bold text-white">${price}</span>
@@ -30,6 +35,9 @@ export default function PriceOption({
 			>
 				Let&apos;s build
 			</Link>
+			<h3 className="text-white/75 font-semibold">
+				Credits usable for either:
+			</h3>
 			<ul className="list-disc list-inside mb-6">
 				{features.map((feature, index) => (
 					<li

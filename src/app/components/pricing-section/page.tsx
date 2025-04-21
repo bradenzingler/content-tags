@@ -13,20 +13,23 @@ export default function PricingSection() {
 				<PriceOption
 					title="Free"
 					price="0"
+                    numCredits={100}
 					description="For exploration and hobby projects. No credit card required."
-					features={["150 text requests", "50 image requests", "5 requests per minute"]}
+					features={["100 text requests", "50 image requests", "5 requests per minute"]}
 				/>
                 <PriceOption
 					title="Startup"
 					price="15"
+                    numCredits={10000}
 					description="For solo developers and indie hackers"
-					features={["10,000 text requests", "5,000 image requests", "20 requests per month", "Faster response times"]}
+					features={["10,000 text requests", "5,000 image requests", "20 requests per minute"]}
 				/>
                 <PriceOption
 					title="Scale"
 					price="55"
+                    numCredits={50000}
 					description="For high traffic applications and businesses"
-					features={["Unlimited text requests", "20,000 image requests", "100 requests per month", "Priority support", "Fastest response times"]}
+					features={["50,000 text requests", "25,000 image requests", "100 requests per minute", "Priority support"]}
 				/>
 			</div>
 		</section>

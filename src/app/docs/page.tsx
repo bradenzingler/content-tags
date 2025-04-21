@@ -34,7 +34,7 @@ export default function DocsPage() {
 
 					<h3 className="text-lg font-medium mt-6 mb-2">Basic example</h3>
 					<pre className="bg-gray-800 p-4 text-xs lg:text-sm rounded-md overflow-x-auto text-green-400 mb-4">
-						{`fetch("https://inferly.dev/api/v1/image/tags", {\n\t"headers": { "x-api-key": "YOUR API KEY" }\n})\n\t.then((response) => response.json())\n\t.then((data) => console.log(data));`}
+						{`fetch("https://inferly.dev/api/v1/image/tags", {\n\t"method": "POST",\n\t"headers": { "x-api-key": "YOUR API KEY" }\n})\n\t.then((response) => response.json())\n\t.then((data) => console.log(data));`}
 					</pre>
 				</>
 			),

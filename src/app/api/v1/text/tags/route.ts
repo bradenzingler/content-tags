@@ -1,14 +1,8 @@
-import { authenticateRequest } from "@/lib/apiAuth";
 import OpenAI from "openai";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_TEXT_API_KEY });
 
 export async function POST(req: Request) {
-    const { msg, status } = await authenticateRequest(req);
-    
-    if (status !== 200) {
-        return Response.json({ error: msg }, { status });
-    }
 
 	const { text } = await req.json();
 

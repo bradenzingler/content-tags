@@ -37,7 +37,7 @@ export default function NavBar() {
 					</li>
                     <li>
 						<Link
-							href={"#pricing"}
+							href={"/#pricing"}
 							title="Read the docs"
 							className="text-white/85 hover:text-white"
 						>

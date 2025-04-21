@@ -3,9 +3,11 @@ import { useState } from "react";
 import { AiOutlineDashboard } from "react-icons/ai";
 import { CiCreditCard1 } from "react-icons/ci";
 import { LuKeyRound } from "react-icons/lu";
-import UsageBar from "../components/dashboard/UsageBar";
-import NoApiKey from "../components/dashboard/NoApiKey";
-import CreateApiKeyModal from "../components/dashboard/CreateApiKey";
+import UsageBar from "../components/dashboard/dashboard/UsageBar";
+import NoApiKey from "../components/dashboard/api-key/NoApiKey";
+import CreateApiKeyModal from "../components/dashboard/api-key/CreateApiKey";
+import ApiKeyDisplay from "../components/dashboard/api-key/ApiKeyDisplay";
+import WarningModal from "../components/dashboard/api-key/WarningModal";
 
 export default function DashboardSections({
 	apiKeyStart,
@@ -14,8 +16,9 @@ export default function DashboardSections({
 	totalRequests,
 	refillDay,
 	lastRefilled,
-    planName,
+	planName,
 	createNewKey,
+    deleteKey,
 }: {
 	apiKeyStart: string;
 	apiKeyId: string | null;
@@ -23,12 +26,15 @@ export default function DashboardSections({
 	totalRequests: number;
 	refillDay: number;
 	lastRefilled: number;
-    planName: string;
-	createNewKey: () => Promise<{ keyId: string, key: string }>;
+	planName: string;
+	createNewKey: () => Promise<{ keyId: string; key: string }>;
+    deleteKey: (keyId: string) => Promise<void>;
 }) {
 	const [tab, setCurrentTab] = useState("usage");
-    const [createdNewApiKey, setCreatedNewApiKey] = useState(false);
-    const [apiKey, setApiKey] = useState("");
+	const [createdNewApiKey, setCreatedNewApiKey] = useState(false);
+	const [showRegenerateKeyWarning, setShowRegenerateKeyWarning] =
+		useState(false);
+	const [apiKey, setApiKey] = useState("");
 
 	const today = new Date();
 	const currentDay = today.getDate();
@@ -46,16 +52,35 @@ export default function DashboardSections({
 	const timeSinceLastRefill = Math.floor(
 		(today.getTime() - lastRefillDate.getTime()) / (1000 * 60 * 60 * 24)
 	);
-    
-    const createApiKey = async () => {
-        const response = await createNewKey();
-        setApiKey(response.key);
-        setCreatedNewApiKey(true);
-    }
-    
+
+	const createApiKey = async () => {
+		const response = await createNewKey();
+		setApiKey(response.key);
+		setCreatedNewApiKey(true);
+	};
+
+	const regenerateApiKey = async () => {
+        if (!apiKeyId) return;
+		// delete old key
+        await deleteKey(apiKeyId);
+		await createApiKey();
+	};
+
 	return (
 		<div className="flex flex-row w-full gap-8 justify-between">
-            {createdNewApiKey && <CreateApiKeyModal apiKey={apiKey} setCreatedNewApiKey={setCreatedNewApiKey} />}
+			{createdNewApiKey && (
+				<CreateApiKeyModal
+					apiKey={apiKey}
+					setCreatedNewApiKey={setCreatedNewApiKey}
+				/>
+			)}
+
+			{showRegenerateKeyWarning && (
+				<WarningModal
+					regenerateKey={regenerateApiKey}
+					setAcceptedWarning={setShowRegenerateKeyWarning}
+				/>
+			)}
 
 			<aside className="w-full lg:w-1/4 border-r pr-4 border-r-teal-50/5">
 				<nav className="w-full flex flex-col items-center justify-center">
@@ -144,12 +169,12 @@ export default function DashboardSections({
 							Your API key
 						</h1>
 						{apiKeyId ? (
-							<div className="mt-8">
-                                <p className="text-white/85 mb-2">User your API key in requests with the x-api-key header.</p>
-								<code className="text-white/85 border-white/50 border px-4 py-1 rounded-md">
-                                    {apiKeyStart}*******
-                                </code>
-							</div>
+							<ApiKeyDisplay
+								setShowRegenerateKeyWarning={
+									setShowRegenerateKeyWarning
+								}
+								apiKeyStart={apiKeyStart}
+							/>
 						) : (
 							<NoApiKey createNewKey={createApiKey} />
 						)}
@@ -159,16 +184,11 @@ export default function DashboardSections({
 						<h1 className="text-gray-200 text-2xl tracking-tight font-semibold">
 							Billing
 						</h1>
-                        <p className="text-gray-100 mt-4">
-                            You are currently on the 
-                            <span className="capitalize">
-                                {" "}{planName}{" "}
-                            </span> 
-                            plan.
-                            <br />
-                            You can upgrade your plan in the future.
-                            <br />
-                        </p>
+						<p className="text-gray-100 mt-4">
+							You are currently on the
+							<span className="capitalize"> {planName} </span>
+							plan. (${getPlanCost(planName)}/month)
+						</p>
 					</section>
 				)}
 			</div>
@@ -176,16 +196,15 @@ export default function DashboardSections({
 	);
 }
 
-
 function getPlanCost(planName: string) {
-    switch (planName) {
-        case "free":
-            return 0;
-        case "pro":
-            return 10;
-        case "business":
-            return 55;
-        default:
-            return 0;
-    }
+	switch (planName) {
+		case "free":
+			return 0;
+		case "pro":
+			return 10;
+		case "business":
+			return 55;
+		default:
+			return 0;
+	}
 }

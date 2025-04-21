@@ -17,6 +17,11 @@ export default async function DashboardPage() {
         apiKeyResult = await unkey.keys.get({ keyId: apiKeyId });
     }
 
+    const deleteKey = async (keyId: string) => {
+        "use server";
+        await unkey.keys.delete({ keyId });
+    }
+
     const createNewKey = async () => {
         "use server";
         const apiKeyResponse = await createNewApiKey(user.userId);
@@ -27,6 +32,7 @@ export default async function DashboardPage() {
 	return (
 		<main className="flex items-center w-11/12 md:w-3/4 lg:w-7/12 mx-auto mt-28">
 			<DashboardSections
+                deleteKey={deleteKey}
                 createNewKey={createNewKey}
 				apiKeyStart={apiKeyResult?.result?.start ?? ""}
 				apiKeyId={apiKeyId}
@@ -34,7 +40,7 @@ export default async function DashboardPage() {
                 remainingRequests={apiKeyResult?.result?.remaining ?? 0}
                 refillDay={apiKeyResult?.result?.refill?.refillDay ?? 0}
                 lastRefilled={apiKeyResult?.result?.refill?.lastRefillAt ?? 0}
-                planName={apiKeyResult?.result?.meta?.tier ?? "free"}
+                planName={apiKeyResult?.result?.meta?.tier as string ?? "free"}
 			/>
 		</main>
 	);

@@ -1,8 +1,8 @@
-import { useAuth } from "@clerk/nextjs";
+import { auth } from "@clerk/nextjs/server";
 import Link from "next/link";
 import { FaCheck } from "react-icons/fa";
 
-export default function PriceOption({
+export default async function PriceOption({
 	price,
 	title,
 	description,
@@ -15,7 +15,9 @@ export default function PriceOption({
 	features: string[];
 	numCredits: number;
 }) {
-	const auth = useAuth();
+	const user = await auth();
+    const isSignedIn = user.userId !== null;
+
 	return (
 		<div className="bg-white/5 w-11/12 mx-auto lg:w-1/4 lg:mx-0 rounded-lg p-8 flex flex-col justify-between">
 			<h3 className="text-3xl text-white font-bold tracking-tight mb-1">
@@ -30,7 +32,7 @@ export default function PriceOption({
 				<span className="text-white/75">per month</span>
 			</div>
 			<Link
-				href={auth.isSignedIn ? "/buy" : "/sign-in"}
+				href={isSignedIn ? "/buy" : "/sign-in"}
 				className="bg-teal-600 hover:bg-teal-600/85 text-center cursor-pointer text-white rounded-md py-2 mb-4"
 			>
 				Let&apos;s build

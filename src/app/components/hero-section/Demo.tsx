@@ -1,11 +1,20 @@
+"use client";
 import Image from "next/image";
 import { ChangeEvent, useState } from "react";
 import { AiOutlineLoading } from "react-icons/ai";
 import { FaTags } from "react-icons/fa";
 import { MdClear, MdFileUpload } from "react-icons/md";
 
-export default function Demo() {
-    const [inputType, setInputType] = useState<string>("text");
+export default function Demo({
+	makeTagsRequest,
+}: {
+	makeTagsRequest: (
+		content: string,
+		inputType: "text" | "image"
+	) => Promise<string[] | null>;
+}) {
+
+	const [inputType, setInputType] = useState<string>("text");
 	const [textInput, setTextInput] = useState<string>("");
 	const [dragActive, setDragActive] = useState<boolean>(false);
 	const [uploadedImage, setUploadedImage] = useState<
@@ -58,44 +67,17 @@ export default function Demo() {
 		setUploadedImage(null);
 	};
 
-	const processContent = () => {
+	const processContent = async () => {
 		setIsProcessing(true);
-
-        if (inputType === "text") {
-            fetch("/api/v1/text/tags/", {
-                method: "POST",
-                headers: { "x-api-key": process.env.NEXT_PUBLIC_TAGS_API_KEY! },
-                body: JSON.stringify({ text: textInput }),
-            }).then((res) => {
-                if (res.ok) {
-                    res.json().then((data) => {
-                        setTags(data.tags);
-                        setIsProcessing(false);
-                    });
-                } else {
-                    setIsProcessing(false);
-                }
-            })
-        } else if (inputType === "image") {
-            fetch("/api/v1/image/tags/", {
-                method: "POST",
-                headers: { "x-api-key": process.env.NEXT_PUBLIC_TAGS_API_KEY! },
-                body: JSON.stringify({
-                    image_url: uploadedImage,
-                }),
-            }).then((res) => {
-                if (res.ok) {
-                    res.json().then((data) => {
-                        setTags(data.tags);
-                        setIsProcessing(false);
-                    });
-                } else {
-                    setIsProcessing(false);
-                }
-            })
+        const content = inputType === "text" ? textInput : uploadedImage as string;
+        const tags = await makeTagsRequest(content, inputType as "text" | "image");
+        console.log(tags);
+        if (tags) {
+            setTags(tags);
         }
+        setIsProcessing(false);
 	};
-    
+
 	return (
 		<div className="w-full lg:w-1/2">
 			<div className="bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-700">
@@ -103,7 +85,6 @@ export default function Demo() {
 					Try it yourself
 				</h3>
 
-				{/* Toggle between text and image input */}
 				<div className="flex mb-4 bg-gray-700 p-1 rounded-lg w-fit">
 					<button
 						className={`px-4 py-2 rounded-md cursor-pointer ${

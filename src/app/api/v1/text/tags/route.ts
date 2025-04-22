@@ -43,16 +43,16 @@ export async function POST(req: NextRequest) {
         );
     }
 
-    if (text.length < 10) {
+    if (text.length < 1) {
         return Response.json(
             { error: "Text is too short. Minimum length is 10 characters." },
             { status: 400 }
         );
     }
 
-    if (text.length > 5000) {
+    if (text.length > 10000) {
         return Response.json(
-            { error: "Text is too long. Maximum length is 5,000 characters." },
+            { error: "Text is too long. Maximum length is 10,000 characters." },
             { status: 400 }
         );
     }
@@ -65,7 +65,10 @@ export async function POST(req: NextRequest) {
                 content: `
                 You are a text content tagger. Provided a text input, you will return 
                 a comma separated list of 8-10 tags that best describe the content of the text.
-                The tags must be accurate and relevant to the content.
+                The tags must be accurate and relevant to the content. The tags should be
+                1-2 words long, never any longer. If they must be longer, just remove them
+                from the list. The tags should be about the general concept of the text.
+                If there is not enough context to generate tags, simply output "NA" and nothing else.
                 `,
             },
             { role: "user", content: text.trim() },

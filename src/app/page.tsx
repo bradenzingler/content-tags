@@ -3,6 +3,7 @@ import { FaTags } from "react-icons/fa";
 import Demo from "./components/hero-section/Demo";
 import PricingSection from "./components/pricing-section/page";
 import { auth } from "@clerk/nextjs/server";
+import FeatureSection from "./components/FeatureSection";
 
 export default async function Home() {
 	const user = await auth();
@@ -13,28 +14,30 @@ export default async function Home() {
 		content: string,
 		inputType: "text" | "image"
 	): Promise<string[] | null> => {
-        "use server";
-        const requestUrl = inputType === "text" ? "/api/v1/text/tags/" : "/api/v1/image/tags/";
-        const requestBody = inputType === "text" ? { text: content } : { image_url: content };
-        
-        try {
-            const response = await fetch(process.env.URL + requestUrl, {
-                method: "POST",
-                headers: {
-                    Authorization: `Bearer ${process.env.TAGS_API_KEY!}`,
-                },
-                body: JSON.stringify(requestBody),
-            });
-            if (!response.ok) {
-                console.error("Error:", response.statusText);
-                return null;
-            }
-            const data = await response.json();
-            return data.tags;
-        } catch (error) {
-            console.error("Error while generating tags:", error);
-            return null;
-        }
+		"use server";
+		const requestUrl =
+			inputType === "text" ? "/api/v1/text/tags/" : "/api/v1/image/tags/";
+		const requestBody =
+			inputType === "text" ? { text: content } : { image_url: content };
+
+		try {
+			const response = await fetch(process.env.URL + requestUrl, {
+				method: "POST",
+				headers: {
+					Authorization: `Bearer ${process.env.TAGS_API_KEY!}`,
+				},
+				body: JSON.stringify(requestBody),
+			});
+			if (!response.ok) {
+				console.error("Error:", response.statusText);
+				return null;
+			}
+			const data = await response.json();
+			return data.tags;
+		} catch (error) {
+			console.error("Error while generating tags:", error);
+			return null;
+		}
 	};
 
 	return (
@@ -48,8 +51,8 @@ export default async function Home() {
 						Turn content into context
 					</h1>
 					<h2 className="text-white/75 mt-4 mb-8 md:text-xl">
-						Get relevant tags for text and images with one simple
-						API call.
+						Get relevant tags for text, images, and video content
+						with one simple API call.
 					</h2>
 					<Link
 						href={isSignedIn ? "/dashboard" : "/sign-in"}
@@ -57,14 +60,83 @@ export default async function Home() {
                    text-white font-semibold lg:text-lg rounded-lg px-6 py-3 inline-flex items-center"
 					>
 						<FaTags className="mr-2 h-5 w-5" />
-						Tag my content
+						Start for free
 					</Link>
+					<p className="text-white/85 mt-2">
+						No credit card required.
+					</p>
 				</div>
 
 				<Demo makeTagsRequest={makeTagsRequest} />
 			</header>
 
-			<div className="border-teal-100/15 border-b border-dashed mb-24 w-full"></div>
+			<FeatureSection
+				headline="Enrich your content"
+				videoSrc="/demo-1.mov"
+				videoSide="left"
+				pText="Automatically categorize and tag your content. Spot trends, uncover patterns, and take smarter actions."
+				featureList={[
+					{
+						boldText: "Categorize any format and any content.",
+						contentText:
+							"Upload audio, image, video, or text - any file format is supported.",
+					},
+					{
+						boldText: "Improve SEO with relevant keywords.",
+						contentText:
+							"Our tags are contextually aware to maximize your search engine rankings.",
+					},
+					{
+						boldText: "Detect trends and signals.",
+						contentText:
+							"We don't just detect - we understand what your content means.",
+					},
+				]}
+				buttonText="Enrich my content"
+				belowButtonText="No credit card required."
+			/>
+
+			<FeatureSection
+				headline="Understand your audience"
+				videoSrc="/demo-1.mov"
+				videoSide="right"
+				pText="Learn what your audience cares about by tagging and classifying your most engaging content."
+				featureList={[
+					{
+						boldText: "Reveal top-performing themes.",
+						contentText:
+							"Find the content types that resonate most across platforms.",
+					},
+					{
+						boldText: "Break down content by topic.",
+						contentText:
+							"Group videos, blogs, and assets into digestible categories.",
+					},
+					{
+						boldText: "Export insights in seconds.",
+						contentText:
+							"Get CSV's, charts, or dashboards with on click.",
+					},
+				]}
+				buttonText="Start analyzing"
+				belowButtonText="Free to try - easy setup."
+			/>
+
+            <FeatureSection
+                headline="Simplify your content management"
+                videoSrc="/demo-5.mov"
+                videoSide="left"
+                pText="Effortlessly organize and track your content with automated tagging and categorization tools."
+                featureList={[
+                    { boldText: "Tag once, organize forever.", contentText: "Let our intelligent tagging system categorize your content in seconds." },
+                    { boldText: "Search and filter with ease.", contentText: "Find exactly what you need in your library with smart filters and tags." },
+                    { boldText: "Automatic content tracking.", contentText: "Monitor the performance and evolution of your content automatically." }
+                ]}
+                buttonText="Start organizing"
+                belowButtonText="No setup fee — get started today"
+            />
+
+			<div className="border-teal-100/15 border-b border-dashed mb-24 w-full mt-24"></div>
 
 			<PricingSection />
 		</main>

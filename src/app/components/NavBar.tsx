@@ -35,7 +35,7 @@ export default function NavBar() {
 							Docs
 						</Link>
 					</li>
-                    <li>
+					<li>
 						<Link
 							href={"/#pricing"}
 							title="Read the docs"
@@ -44,31 +44,38 @@ export default function NavBar() {
 							Pricing
 						</Link>
 					</li>
-                    {isSignedIn && (
-                        <li>
-                            <Link
-                                href={"/dashboard"}
-                                title="Read the docs"
-                                className="text-white/85 hover:text-white"
-                            >
-                                Dashboard
-                            </Link>
-					</li>
-                    )}
-					<li>
-						{isSignedIn ? (
-                            <div className="items-center flex">
-                                <UserButton />
-                            </div>
-						) : (
-							<SignInButton>
-								<button className="text-white/85 cursor-pointer hover:border-white/85 border border-white/50 rounded-lg px-2 py-1">
-									Sign in
-								</button>
-							</SignInButton>
-						)}
+                    <li>
+						<Link
+							href={"/blog"}
+							title="Read the blog"
+							className="text-white/85 hover:text-white"
+						>
+							Blog
+						</Link>
 					</li>
 				</ul>
+				<div className="flex items-center gap-4">
+					{isSignedIn && (
+						<Link
+							href={"/dashboard"}
+							title="Read the docs"
+							className="text-white/85 hover:text-white"
+						>
+							Dashboard
+						</Link>
+					)}
+					{isSignedIn ? (
+						<div className="items-center flex">
+							<UserButton />
+						</div>
+					) : (
+						<SignInButton>
+							<button className="text-white/85 cursor-pointer hover:border-white/85 border border-white/50 rounded-lg px-2 py-1">
+								Sign in
+							</button>
+						</SignInButton>
+					)}
+				</div>
 			</div>
 		</nav>
 	);

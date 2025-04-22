@@ -23,7 +23,7 @@ export default function Demo({
 	const [tags, setTags] = useState<string[]>([]);
 	const [isProcessing, setIsProcessing] = useState<boolean>(false);
 
-	const handleTextChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
+	const handleTextChange = async (e: ChangeEvent<HTMLTextAreaElement>) => {
 		setTextInput(e.target.value);
 	};
 
@@ -36,6 +36,34 @@ export default function Demo({
 			setDragActive(false);
 		}
 	};
+
+    const handlePaste = (e: React.ClipboardEvent) => {
+        const clipboardData = e.clipboardData;
+    
+        // Check for image files
+        const items = clipboardData.items;
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.startsWith("image/")) {
+                const file = items[i].getAsFile();
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        setUploadedImage(event.target?.result || null);
+                    };
+                    reader.readAsDataURL(file);
+                }
+                return;
+            }
+        }
+    
+        // Check for image URLs
+        const text = clipboardData.getData("text");
+        if (text && (text.startsWith("http://") || text.startsWith("https://"))) {
+            if (/\.(jpeg|jpg|png|gif|webp)$/i.test(text)) {
+                setUploadedImage(text);
+            }
+        }
+    };
 
 	const handleDrop = (e: React.DragEvent) => {
 		e.preventDefault();
@@ -113,13 +141,13 @@ export default function Demo({
 					{inputType === "text" && (
 						<div className="mb-4">
 							<textarea
-								className="w-full h-40 p-4 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-teal-500 focus:ring-2 focus:ring-teal-500 focus:outline-none"
-								placeholder="Enter 10-1000 characters to tag..."
+								className="w-full resize-none h-40 p-4 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-teal-500 focus:ring-2 focus:ring-teal-500 focus:outline-none"
+								placeholder="Enter text here..."
 								value={textInput}
 								onChange={handleTextChange}
 							></textarea>
 							<div className="text-right text-gray-400 text-sm">
-								{textInput.length}/1000 characters
+								{textInput.length}/10,000 characters
 							</div>
 						</div>
 					)}
@@ -138,6 +166,7 @@ export default function Demo({
 							onDragLeave={handleDrag}
 							onDragOver={handleDrag}
 							onDrop={handleDrop}
+                            onPaste={handlePaste}
 						>
 							{!uploadedImage ? (
 								<>
@@ -201,7 +230,7 @@ export default function Demo({
 				{tags.length > 0 && (
 					<div className="mt-4">
 						<h4 className="text-white font-medium mb-2">
-							Generated Tags:
+							Tags:
 						</h4>
 						<div className="flex flex-wrap gap-2">
 							{tags.map((tag, index) => (

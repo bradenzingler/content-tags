@@ -51,7 +51,7 @@ export default async function Home() {
 						Turn content into context
 					</h1>
 					<h2 className="text-white/75 mt-4 mb-8 md:text-xl">
-						Get relevant tags for text, images, and video content
+						Get relevant tags for text and image content
 						with one simple API call.
 					</h2>
 					<Link
@@ -79,7 +79,7 @@ export default async function Home() {
 					{
 						boldText: "Categorize any format and any content.",
 						contentText:
-							"Upload audio, image, video, or text - any file format is supported.",
+							"Upload image or text - any file format is supported.",
 					},
 					{
 						boldText: "Improve SEO with relevant keywords.",
@@ -110,7 +110,7 @@ export default async function Home() {
 					{
 						boldText: "Break down content by topic.",
 						contentText:
-							"Group videos, blogs, and assets into digestible categories.",
+							"Group blogs, assets, and more into digestible categories.",
 					},
 					{
 						boldText: "Export insights in seconds.",

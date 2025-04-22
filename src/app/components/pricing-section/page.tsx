@@ -29,14 +29,14 @@ export default function PricingSection() {
 					price="79"
                     numCredits={25000}
 					description="For growing businesses with advanced use-cases."
-					features={["Advanced tag analytics for your content", "Custom confidence thresholds", "Custom categories", "60 requests per minute"]}
+					features={["Advanced tag analytics for your content", "Custom categories", "60 requests per minute"]}
 				/>
                 <PriceOption
 					title="Scale"
 					price="149"
                     numCredits={50000}
 					description="For high traffic applications and companies."
-					features={["Advanced tag analytics for your content", "Custom confidence thresholds", "Custom categories", "Priority support and requests", "120 requests per minute", ]}
+					features={["Advanced tag analytics for your content", "Custom categories", "Priority support and requests", "120 requests per minute", ]}
 				/>
 			</div>
 		</section>

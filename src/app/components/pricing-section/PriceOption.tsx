@@ -20,7 +20,7 @@ export default async function PriceOption({
 
     const numText = numCredits.toLocaleString();
     const numImage = (numCredits / 2).toLocaleString();
-    const numVideo = (numCredits / 8).toLocaleString();
+    // const numVideo = (numCredits / 8).toLocaleString();
 
 	return (
 		<div className="bg-white/5 w-11/12 mx-auto lg:w-1/4 lg:mx-0 rounded-lg p-8 flex flex-col justify-between">
@@ -44,8 +44,7 @@ export default async function PriceOption({
 			<ul className="list-disc list-inside mb-6">
 				<li className="text-white/75 flex items-center gap-2">
 					<FaCheck className="text-teal-600/85" />
-					{numText} text, {numImage} image, or{" "}
-					{numVideo} video requests
+					{numText} text or {numImage} image requests
 				</li>
 				{features.map((feature, index) => (
 					<li

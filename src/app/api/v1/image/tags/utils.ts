@@ -24,7 +24,7 @@ export function parseTagsFromLabels(labels: DetectLabelsCommandOutput): string[]
         parents.forEach((parent) => tags.push(parent));
     }
 
-    return tags;
+    return Array.from(new Set(tags));
 }
 
 export function parseParentsFromLabel(label: Label): string[] | null {

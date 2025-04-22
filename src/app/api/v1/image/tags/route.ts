@@ -31,6 +31,18 @@ export async function POST(req: NextRequest) {
 	}
 
 	if (!res.result.valid) {
+        if (res.result.code === "RATE_LIMITED") {
+            return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
+        }
+        if (res.result.code === "USAGE_EXCEEDED") {
+            return NextResponse.json({ error: "Usage limit exceeded" }, { status: 402 });
+        }
+        if (res.result.code === "DISABLED") {
+            return NextResponse.json({ error: "API key is disabled" }, { status: 403 });
+        }
+        if (res.result.code === "EXPIRED") {
+            return NextResponse.json({ error: "API key is expired" }, { status: 403 });
+        }
 		return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 	}
 
@@ -86,7 +98,7 @@ export async function POST(req: NextRequest) {
         }, { status: 400 });
     }
 
-    const isValidImageLength = contentLength && parseInt(contentLength) < MAX_IMAGE_SIZE;
+    const isValidImageLength = contentLength && parseInt(contentLength) < MAX_IMAGE_SIZE || !contentLength;
     if (!isValidImageLength) {
         return NextResponse.json({
             error: "Image too large, maximum size is 5MB."

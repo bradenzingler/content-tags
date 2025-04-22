@@ -32,6 +32,45 @@ describe("Image tags POST route", () => {
 		expect(json).toEqual({ error: "Unauthorized" });
 	});
 
+    test("Rate limited API key returns 429", async () => {
+		const mockVerify = (await import("@/lib/unkey")).unkey.keys
+			.verify as Mock;
+		mockVerify.mockResolvedValue({
+			result: { valid: false, code: "RATE_LIMITED" },
+			error: null,
+		});
+		const req = new NextRequest("https://test123.com", {
+			method: "POST",
+			headers: {
+				Authorization: "Bearer tags_invalid-api-key",
+			},
+		});
+		const res = await POST(req);
+		expect(res.status).toBe(429);
+		const json = await res.json();
+		expect(json).toEqual({ error: "Rate limit exceeded" });
+	});
+
+    test("Usage exceeded API key returns 402", async () => {
+		const mockVerify = (await import("@/lib/unkey")).unkey.keys
+			.verify as Mock;
+		mockVerify.mockResolvedValue({
+			result: { valid: false, code: "USAGE_EXCEEDED" },
+			error: null,
+		});
+		const req = new NextRequest("https://test123.com", {
+			method: "POST",
+			headers: {
+				Authorization: "Bearer tags_invalid-api-key",
+			},
+		});
+		const res = await POST(req);
+		expect(res.status).toBe(402);
+		const json = await res.json();
+		expect(json).toEqual({ error: "Usage limit exceeded" });
+	});
+
+
 	test("Error while validating API key returns 500 response", async () => {
 		const mockVerify = (await import("@/lib/unkey")).unkey.keys
 			.verify as Mock;
@@ -144,37 +183,42 @@ describe("Image tags POST route", () => {
 				},
 				{ Name: "Dog", Confidence: 99, Parents: [{ Name: "Animal" }] },
 				{ Name: "Cat", Confidence: 99, Parents: [] },
-			], ["person", "human", "dog", "animal", "cat"],
-            [
+			],
+			["person", "human", "dog", "animal", "cat"],
+			[
 				{ Name: "Person", Confidence: 99 },
 				{ Name: "Dog", Confidence: 99 },
 				{ Name: "Cat", Confidence: 99 },
-			], ["person", "dog", "cat"],
+			],
+			["person", "dog", "cat"],
 		],
-	])("Valid request returns tags successfully", async (labels, expectedLabels) => {
-		const mockVerify = (await import("@/lib/unkey")).unkey.keys
-			.verify as Mock;
-		mockVerify.mockResolvedValue({
-			result: { valid: true },
-			error: null,
-		});
+	])(
+		"Valid request returns tags successfully",
+		async (labels, expectedLabels) => {
+			const mockVerify = (await import("@/lib/unkey")).unkey.keys
+				.verify as Mock;
+			mockVerify.mockResolvedValue({
+				result: { valid: true },
+				error: null,
+			});
 
-		(detectLabelsMock as Mock).mockResolvedValue({ Labels: labels });
+			(detectLabelsMock as Mock).mockResolvedValue({ Labels: labels });
 
-		const req = new NextRequest("https://test123.com", {
-			method: "POST",
-			headers: {
-				Authorization: "Bearer tags_valid-api-key",
-			},
-			body: JSON.stringify({
-				image_url: "https://www.gstatic.com/webp/gallery/1.jpg",
-			}),
-		});
-		const res = await POST(req);
-		expect(res.status).toBe(200);
-		const json = await res.json();
-        expect (json).toEqual({
-            tags: expectedLabels
-        });
-	});
+			const req = new NextRequest("https://test123.com", {
+				method: "POST",
+				headers: {
+					Authorization: "Bearer tags_valid-api-key",
+				},
+				body: JSON.stringify({
+					image_url: "https://www.gstatic.com/webp/gallery/1.jpg",
+				}),
+			});
+			const res = await POST(req);
+			expect(res.status).toBe(200);
+			const json = await res.json();
+			expect(json).toEqual({
+				tags: expectedLabels,
+			});
+		}
+	);
 });

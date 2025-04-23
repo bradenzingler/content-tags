@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 
 export const ERROR_CODES = {
     INVALID_REQUEST: "invalid_request",
-
+    API_KEY_MISSING: "api_key_missing",
 }
 
 export const DOC_URLS = {

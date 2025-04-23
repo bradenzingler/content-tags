@@ -28,7 +28,7 @@ export default function NavBar() {
 				<ul className="flex items-center gap-8">
 					<li>
 						<Link
-							href={"/docs"}
+							href={"/docs/getting-started"}
 							title="Read the docs"
 							className="text-white/85 hover:text-white"
 						>
@@ -58,7 +58,7 @@ export default function NavBar() {
 					{isSignedIn && (
 						<Link
 							href={"/dashboard"}
-							title="Read the docs"
+							title="Dashboard"
 							className="text-white/85 hover:text-white"
 						>
 							Dashboard

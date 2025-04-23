@@ -3,11 +3,11 @@ import { useState } from "react";
 import { AiOutlineDashboard } from "react-icons/ai";
 import { CiCreditCard1 } from "react-icons/ci";
 import { LuKeyRound } from "react-icons/lu";
-import UsageBar from "../components/dashboard/dashboard/UsageBar";
-import NoApiKey from "../components/dashboard/api-key/NoApiKey";
-import CreateApiKeyModal from "../components/dashboard/api-key/CreateApiKey";
-import ApiKeyDisplay from "../components/dashboard/api-key/ApiKeyDisplay";
-import WarningModal from "../components/dashboard/api-key/WarningModal";
+import UsageBar from "../components/dashboard_sections/dashboard/UsageBar";
+import NoApiKey from "../components/dashboard_sections/api-key/NoApiKey";
+import CreateApiKeyModal from "../components/dashboard_sections/api-key/CreateApiKey";
+import ApiKeyDisplay from "../components/dashboard_sections/api-key/ApiKeyDisplay";
+import WarningModal from "../components/dashboard_sections/api-key/WarningModal";
 
 export default function DashboardSections({
 	apiKeyStart,

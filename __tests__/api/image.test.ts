@@ -1,8 +1,8 @@
-import { POST } from "@/app/api/v1/image/tags/route";
+import { POST } from "@/app/api/image/tags/route";
 import { NextRequest } from "next/server";
 import { describe, expect, test, Mock } from "vitest";
 // @ts-expect-error this is exported as a mock from ../setups.ts
-import { detectLabelsMock } from "@aws-sdk/client-rekognition";
+import { createMock } from "openai";
 
 describe("Image tags POST route", () => {
 	test("Missing API key receives 401 response", async () => {
@@ -32,7 +32,7 @@ describe("Image tags POST route", () => {
 		expect(json).toEqual({ error: "Unauthorized" });
 	});
 
-    test("Rate limited API key returns 429", async () => {
+	test("Rate limited API key returns 429", async () => {
 		const mockVerify = (await import("@/lib/unkey")).unkey.keys
 			.verify as Mock;
 		mockVerify.mockResolvedValue({
@@ -51,7 +51,7 @@ describe("Image tags POST route", () => {
 		expect(json).toEqual({ error: "Rate limit exceeded" });
 	});
 
-    test("Usage exceeded API key returns 402", async () => {
+	test("Usage exceeded API key returns 402", async () => {
 		const mockVerify = (await import("@/lib/unkey")).unkey.keys
 			.verify as Mock;
 		mockVerify.mockResolvedValue({
@@ -69,7 +69,6 @@ describe("Image tags POST route", () => {
 		const json = await res.json();
 		expect(json).toEqual({ error: "Usage limit exceeded" });
 	});
-
 
 	test("Error while validating API key returns 500 response", async () => {
 		const mockVerify = (await import("@/lib/unkey")).unkey.keys
@@ -175,26 +174,13 @@ describe("Image tags POST route", () => {
 
 	test.each([
 		[
-			[
-				{
-					Name: "Person",
-					Confidence: 99,
-					Parents: [{ Name: "Human" }],
-				},
-				{ Name: "Dog", Confidence: 99, Parents: [{ Name: "Animal" }] },
-				{ Name: "Cat", Confidence: 99, Parents: [] },
-			],
+			"person,human,dog,animal,cat",
 			["person", "human", "dog", "animal", "cat"],
-			[
-				{ Name: "Person", Confidence: 99 },
-				{ Name: "Dog", Confidence: 99 },
-				{ Name: "Cat", Confidence: 99 },
-			],
-			["person", "dog", "cat"],
 		],
+		["person, dog, Cat", ["person", "dog", "cat"]],
 	])(
 		"Valid request returns tags successfully",
-		async (labels, expectedLabels) => {
+		async (openaiResponse, expectedLabels) => {
 			const mockVerify = (await import("@/lib/unkey")).unkey.keys
 				.verify as Mock;
 			mockVerify.mockResolvedValue({
@@ -202,7 +188,9 @@ describe("Image tags POST route", () => {
 				error: null,
 			});
 
-			(detectLabelsMock as Mock).mockResolvedValue({ Labels: labels });
+			(createMock as Mock).mockResolvedValue({
+				output_text: openaiResponse,
+			});
 
 			const req = new NextRequest("https://test123.com", {
 				method: "POST",

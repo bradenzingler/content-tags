@@ -2,25 +2,31 @@ import { beforeEach } from "node:test";
 import { vi } from "vitest";
 
 vi.mock("@/lib/unkey", () => ({
-    unkey: {
-        keys: {
-            verify: vi.fn()
-        },
-    },
-    API_ID: "mock-api-id"
+	unkey: {
+		keys: {
+			verify: vi.fn(),
+		},
+	},
+	API_ID: "mock-api-id",
 }));
 
-vi.mock("@aws-sdk/client-rekognition", () => {
-    const detectLabelsMock = vi.fn();
-    return {
-        Rekognition: vi.fn().mockImplementation(() => ({
-            detectLabels: detectLabelsMock,
+vi.mock("openai", () => {
+	const createMock = vi.fn();
+	return {
+        OpenAI: vi.fn().mockImplementation(() => ({
+            responses: {
+                create:  createMock,
+            },
         })),
         __esModule: true,
-        detectLabelsMock,
-    };
+        createMock,
+	};
 });
 
+vi.mock("@/lib/s3", () => ({
+    putImageInS3AndGetPresignedUrl: vi.fn(),
+}));
+
 beforeEach(() => {
-    vi.resetAllMocks();
+	vi.resetAllMocks();
 });

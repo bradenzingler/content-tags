@@ -34,7 +34,15 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 
 	if err != nil {
 		fmt.Println(err)
-		return errorResponse("invalid_request", "The request body could not be parsed. Check your input body for typos.", 400)
+		return errorResponse("invalid_request", "The request body could not be parsed. Please provide a valid input body", 400)
+	}
+
+	if requestBody.ImageUrl == "" {
+		return errorResponse("invalid_request", "The 'image_url' field is missing.", 400)
+	}
+	
+	if (!isValidURL(requestBody.ImageUrl)) {
+		return errorResponse("invalid_request", "The provided image_url is not a valid URL", 400)
 	}
 
 	response := ResponseBody{
@@ -52,21 +60,6 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 	return events.APIGatewayProxyResponse{
 		StatusCode: 200,
 		Body:  		string(responseJSON),
-	}, nil
-}
-
-func errorResponse(code string, description string, status int) (events.APIGatewayProxyResponse, error) {
-	errResp := ErrorResponseBody{
-		ErrorCode: code,
-		DocumentationURL: "https://inferly.org/docs/errors/" + code,
-		ErrorDescription: description,
-	}
-
-	jsonBody, _ := json.Marshal(errResp);
-
-	return events.APIGatewayProxyResponse{
-		StatusCode: status,
-		Body: 		string(jsonBody),
 	}, nil
 }
 

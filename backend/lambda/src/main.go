@@ -7,12 +7,8 @@ import (
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/openai/openai-go"
-	"github.com/openai/openai-go/responses"
 )
 
-var client openai.Client = openai.NewClient()
-const OPENAI_MODEL = "gpt-4.1-nano"
 
 type ResponseBody struct {
 	Tags []string `json:"tags"`
@@ -64,31 +60,11 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 	// 			500)
 	// }
 
-	// return events.APIGatewayProxyResponse{
-	// 	StatusCode: 200,
-	// 	Body: res,
-	// }, nil
+	tags, err := getTags(requestBody.ImageUrl)
 
-	prompt := fmt.Sprintf(`You are a helpful assistant. Your task is to analyze an image and provide tags based on its content. 
-                    The tags should be relevant to the image and should not include any personal information or sensitive data.
-                    The tags should be concise and descriptive, ideally 1-2 words longs. 
-                    If the image is not very detailed, try to provide tags based on the overall theme or subject of the image.
-                    The image will be provided as a URL. Format the tags in a comma separated list.
-                    if you cannot see the image, do not make anything up. Return 'NO_TAGS'.
-                    If you can not return tags for any reason, return 'NO_TAGS': %s`, requestBody.ImageUrl)
-	
-	openaiResponse, err := client.Responses.New(context.Background(), responses.ResponseNewParams{
-		Model: OPENAI_MODEL,
-		Input: responses.ResponseNewParamsInputUnion{OfString: openai.String(prompt)},
-	})
 	if err != nil {
 		return errorResponse("internal_error", 
 		fmt.Sprintf("Sorry, unable to find tags. Please try again. You have not be charged for this request. %s", err), 500)
-	}
-
-	tags, err := parseOpenAiResponse(*openaiResponse)
-	if err != nil {
-		return errorResponse("internal_error", fmt.Sprintf("%s", err), 500)
 	}
 
 	response := ResponseBody{

@@ -6,17 +6,14 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"strings"
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
-	"github.com/openai/openai-go/responses"
 )
 
 const DOCS_URL = "https://inferly.org/docs/errors/"
 const IMAGE_FETCH_TIMEOUT = time.Second * 2
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024 // 5 MB
-const ERROR_RESPONSE = "NO_TAGS"
 var SUPPORTED_FORMATS = []string{"image/jpeg", "image/png", "base64"}
 
 func isValidURL(str string) bool {
@@ -97,13 +94,3 @@ func errorResponse(code string, description string, status int) (events.APIGatew
 	}, nil
 }
 
-func parseOpenAiResponse(res responses.Response) ([]string, error) {
-	text := res.OutputText()
-	
-	if len(text) == 0 || text == ERROR_RESPONSE {
-		return nil, fmt.Errorf("unable to find tags. please try again")
-	}
-
-	tags := strings.Split(text, ",")
-	return tags, nil
-}

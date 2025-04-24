@@ -109,7 +109,7 @@ export async function POST(req: NextRequest) {
             {
                 role: "system",
                 content: `
-                    You are a helpful assistant. Your task is to analyze an image and provide tags based on its content. 
+                    You are a helpful image tagging assistant. Your task is to analyze an image and provide tags based on its content. 
                     The tags should be relevant to the image and should not include any personal information or sensitive data.
                     The tags should be concise and descriptive, ideally 1-2 words longs. 
                     If the image is not very detailed, try to provide tags based on the overall theme or subject of the image.

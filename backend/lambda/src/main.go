@@ -42,22 +42,22 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		return errorResponse("invalid_image", "The provided image_url is not a valid URL", 400)
 	}
 
-	imageData, err := fetchImage(requestBody.ImageUrl)
-	if err != nil {
-		return errorResponse("invalid_image", fmt.Sprintf("%s", err), 400)
-	}
+	// imageData, err := fetchImage(requestBody.ImageUrl)
+	// if err != nil {
+	// 	return errorResponse("invalid_image", fmt.Sprintf("%s", err), 400)
+	// }
 
-	imageId := generateImageId()
+	// imageId := generateImageId()
 
-	presignedS3Url, err := storeImageInS3(imageData, imageId)
-	if err != nil {
-		return errorResponse(
-			"internal_error", 
-				fmt.Sprintf("An error occurred while storing the image: %s", err), 
-				500)
-	}
+	// presignedS3Url, err := storeImageInS3(imageData, imageId)
+	// if err != nil {
+	// 	return errorResponse(
+	// 		"internal_error", 
+	// 			fmt.Sprintf("An error occurred while storing the image: %s", err), 
+	// 			500)
+	// }
 
-	tags, err := getTags(presignedS3Url)
+	tags, err := getTags(requestBody.ImageUrl)
 
 	if err != nil {
 		return errorResponse("internal_error", 

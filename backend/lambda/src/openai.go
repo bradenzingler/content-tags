@@ -49,7 +49,7 @@ func getTags(imageURL string) ([]string, error) {
 	systemPrompt := fmt.Sprintf(`
 	You are a helpful assistant. Your task is to analyze an image and provide tags based on its content. 
 	The tags should be relevant to the image and should not include any personal information or sensitive data.
-	The tags should be concise and descriptive, ideally 1-2 words longs. 
+	The tags should be concise and descriptive, ideally 1-2 words long.
 	If the image is not very detailed, try to provide tags based on the overall theme or subject of the image.
 	The image will be provided as a URL. Format the tags in a comma separated list.
 	if you cannot see the image, do not make anything up. Return 'NO_TAGS'.
@@ -115,7 +115,6 @@ func getTags(imageURL string) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal response body: %v", err)
 	}
-	
 
 	isValidResponse := len(aiResponse.Output) > 0 && len(aiResponse.Output[0].Content) > 0 && aiResponse.Output[0].Content[0].Text != ERROR_RESPONSE
 
@@ -144,5 +143,8 @@ func parseOpenAiResponse(res OpenAIResponse) ([]string, error) {
 	}
 
 	tags := strings.Split(text, ",")
+	for i, tag := range tags {
+		tags[i] = strings.ToLower(strings.TrimSpace(tag))
+	}
 	return tags, nil
 }

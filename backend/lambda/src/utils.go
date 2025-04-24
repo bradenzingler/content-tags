@@ -25,52 +25,22 @@ func generateImageId() string {
 	return fmt.Sprintf("%d", time.Now().UnixNano())
 }
 
-// func isValidImageType(url string) bool {
-// 	if isBase64Image(url) {
-// 		return true
-// 	}
-// 	resp, err := http.Head(url)
-// 	if err != nil {
-// 		return false
-// 	}
-// 	defer resp.Body.Close()
-// 	contentType := resp.Header.Get("Content-Type")
-// 	if contentType == "" {
-// 		return false
-// 	}
-
-// 	if !strings.HasPrefix(contentType, "image/") {
-// 		return false
-// 	}
-
-// 	for _, format := range SUPPORTED_FORMATS {
-// 		if strings.Contains(contentType, format) {
-// 			return true
-// 		}
-// 	}
-// 	return false
-// }
-
-// func isBase64Image(str string) bool {
-// 	return strings.HasPrefix(str, "data:image/")
-// }
-
 func fetchImage(url string) ([]byte, error) {
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, err
 	}
-
+	
 	defer resp.Body.Close()
-
+	
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("request to image failed with status code: %d", resp.StatusCode)
 	}
-
+	
 	if resp.ContentLength > MAX_IMAGE_SIZE {
 		return nil, fmt.Errorf("image size of %d bytes exceeds the maximum limit of %d bytes", resp.ContentLength, MAX_IMAGE_SIZE)
 	}
-
+	
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err

@@ -9,7 +9,9 @@
     "lint": "next lint",
     "test": "vitest",
     "build-lambda": "cd backend/lambda/src && mkdir -p dist && GOOS=linux GOARCH=amd64 go build -o dist/bootstrap -ldflags='-s -w' *.go && cd dist/ && zip bootstrap.zip bootstrap && cd -",
-    "deploy-lambda": "npm run build-lambda && aws lambda update-function-code --function-name content-tags --zip-file fileb://backend/lambda/src/dist/bootstrap.zip"
+    "deploy-lambda": "npm run build-lambda && aws lambda update-function-code --function-name content-tags --zip-file fileb://backend/lambda/src/dist/bootstrap.zip",
+    "build-authorizer-lambda": "cd backend/authorizer-lambda/src && GOOS=linux GOARCH=amd64 go build -o dist/bootstrap -ldflags='-s -w' *.go && cd dist/ && zip bootstrap.zip bootstrap && cd -",
+    "deploy-authorizer-lambda": "npm run build-authorizer-lambda && aws lambda update-function-code --function-name content-tags-authorizer --zip-file fileb://backend/authorizer-lambda/src/dist/bootstrap.zip"
 },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.788.0",

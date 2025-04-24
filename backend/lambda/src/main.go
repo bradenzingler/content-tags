@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -45,6 +46,32 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 
 	if !isValidURL(requestBody.ImageUrl) {
 		return errorResponse("invalid_image", "The provided image_url is not a valid URL", 400)
+	}
+
+	apiKey, err := getApiKeyFromHeaders(request)
+	if err != nil {
+		return errorResponse("invalid_api_key", err.Error(), 401)
+	}
+
+	valid, apiKeyInfo, err := isValidApiKey(ctx, apiKey)
+	if err != nil {
+		return errorResponse("invalid_api_key", err.Error(), 500)
+	}
+
+	if !valid {
+		return errorResponse("invalid_api_key", "The provided API key is invalid", 401)
+	}
+
+	apiKeyInfo.Lock()
+	defer apiKeyInfo.Unlock()
+
+	apiKeyInfo.RateLimit = apiKeyInfo.RateLimit - 1
+	apiKeyInfo.TotalUsage = apiKeyInfo.TotalUsage + 1
+	apiKeyInfo.LastUsed = time.Now()
+	apiKeyInfo.RequestCounts = append(apiKeyInfo.RequestCounts, time.Now())
+
+	if apiKeyInfo.RateLimit <= 0 {
+		return errorResponse("rate_limit_exceeded", "The provided API key has reached its rate limit", 429)
 	}
 
 	cacheKey := getMD5Hash(requestBody.ImageUrl)

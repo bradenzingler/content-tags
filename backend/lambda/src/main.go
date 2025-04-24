@@ -40,27 +40,50 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 	if requestBody.ImageUrl == "" {
 		return errorResponse("invalid_request", "The 'image_url' field is missing.", 400)
 	}
-	
+
 	if (!isValidURL(requestBody.ImageUrl)) {
-		return errorResponse("invalid_request", "The provided image_url is not a valid URL", 400)
+		return errorResponse("invalid_image", "The provided image_url is not a valid URL", 400)
 	}
 
-	response := ResponseBody{
-		Tags: []string{"123", "456"},
-	}
+	// if (!isValidImageType(requestBody.ImageUrl)) {
+	// }
 
-	responseJSON, err := json.Marshal(response)
+	imageData, err := fetchImage(requestBody.ImageUrl)
 	if err != nil {
-		return events.APIGatewayProxyResponse{
-			StatusCode: 500,
-			Body: `{"error": "Failed to marshal response"}`,
-		}, nil
+		return errorResponse("invalid_image", "The provided image_url could not be fetched.", 400)
+	}
+
+	imageId := generateImageId()
+
+	res, err := storeImageInS3(imageData, imageId)
+	if err != nil {
+		return errorResponse(
+			"internal_error", 
+				fmt.Sprintf("An error occurred while storing the image: %s", err), 
+				500)
 	}
 
 	return events.APIGatewayProxyResponse{
 		StatusCode: 200,
-		Body:  		string(responseJSON),
+		Body: res,
 	}, nil
+
+	// response := ResponseBody{
+	// 	Tags: []string{"123", "456"},
+	// }
+
+	// responseJSON, err := json.Marshal(response)
+	// if err != nil {
+	// 	return events.APIGatewayProxyResponse{
+	// 		StatusCode: 500,
+	// 		Body: `{"error": "Failed to marshal response"}`,
+	// 	}, nil
+	// }
+
+	// return events.APIGatewayProxyResponse{
+	// 	StatusCode: 200,
+	// 	Body:  		string(responseJSON),
+	// }, nil
 }
 
 func main() {

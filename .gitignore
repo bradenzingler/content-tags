@@ -2,7 +2,7 @@
 
 # dependencies
 backend/lambda/node_modules
-backend/lambda/dist
+backend/lambda/src/dist/
 /node_modules
 /.pnp
 .pnp.*

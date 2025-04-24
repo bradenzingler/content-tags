@@ -15,7 +15,7 @@ const ERROR_RESPONSE = "NO_TAGS"
 
 type ImageContent struct {
 	Type 		string `json:"type"`
-	ImageURL  	string `json:"url"`
+	ImageURL  	string `json:"image_url"`
 }
 
 type TextContent struct {
@@ -30,7 +30,7 @@ type Message struct {
 
 type ChatRequest struct {
 	Model 		string `json:"model"`
-	Messages 	[]Message `json:"messages"`
+	Messages 	[]Message `json:"input"`
 }
 
 type OpenAIResponse struct {
@@ -71,13 +71,15 @@ func getTags(imageURL string) ([]string, error) {
 		Messages: []Message{
 			{
 				Role: "system",
-				Content: []interface{}{systemPrompt},
+				Content: []interface{}{
+					TextContent{ Type: "input_text", Text: systemPrompt},
+				},
 			},
 			{
 				Role: "user",
 				Content: []interface{}{
-					ImageContent{ Type: "image_url", ImageURL: imageURL },
-					TextContent{ Type: "text", Text: USER_PROMPT },
+					ImageContent{ Type: "input_image", ImageURL: imageURL },
+					TextContent{ Type: "input_text", Text: USER_PROMPT },
 				},
 			},
 		},
@@ -97,11 +99,12 @@ func getTags(imageURL string) ([]string, error) {
 		return nil, fmt.Errorf("failed to send request: %v", err)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("request failed with status code: %d", resp.StatusCode)
-	}
 
 	respBody, err := io.ReadAll(resp.Body)
+	
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("request failed with status code: %d, %s", resp.StatusCode, string(respBody))
+	}
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response body: %v", err)
@@ -112,6 +115,7 @@ func getTags(imageURL string) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal response body: %v", err)
 	}
+	
 
 	isValidResponse := len(aiResponse.Output) > 0 && len(aiResponse.Output[0].Content) > 0 && aiResponse.Output[0].Content[0].Text != ERROR_RESPONSE
 

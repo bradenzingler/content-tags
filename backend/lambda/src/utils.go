@@ -6,13 +6,17 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/openai/openai-go/responses"
 )
 
 const DOCS_URL = "https://inferly.org/docs/errors/"
 const IMAGE_FETCH_TIMEOUT = time.Second * 2
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024 // 5 MB
+const ERROR_RESPONSE = "NO_TAGS"
 var SUPPORTED_FORMATS = []string{"image/jpeg", "image/png", "base64"}
 
 func isValidURL(str string) bool {
@@ -63,7 +67,11 @@ func fetchImage(url string) ([]byte, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("HTTP request to image failed with status code: %d", resp.StatusCode)
+		return nil, fmt.Errorf("request to image failed with status code: %d", resp.StatusCode)
+	}
+
+	if resp.ContentLength > MAX_IMAGE_SIZE {
+		return nil, fmt.Errorf("image size of %d bytes exceeds the maximum limit of %d bytes", resp.ContentLength, MAX_IMAGE_SIZE)
 	}
 
 	data, err := io.ReadAll(resp.Body)
@@ -87,4 +95,15 @@ func errorResponse(code string, description string, status int) (events.APIGatew
 		StatusCode: status,
 		Body: 		string(jsonBody),
 	}, nil
+}
+
+func parseOpenAiResponse(res responses.Response) ([]string, error) {
+	text := res.OutputText()
+	
+	if len(text) == 0 || text == ERROR_RESPONSE {
+		return nil, fmt.Errorf("unable to find tags. please try again")
+	}
+
+	tags := strings.Split(text, ",")
+	return tags, nil
 }

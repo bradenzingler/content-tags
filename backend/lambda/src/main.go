@@ -2,8 +2,6 @@ package main
 
 import (
 	"context"
-	"crypto/md5"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"sync"
@@ -12,23 +10,10 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 )
 
-// Cache for storing previously processed image tags
 var (
 	cache      = make(map[string][]string)
 	cacheLock  = sync.RWMutex{}
-	cacheStats = struct {
-		hits   int
-		misses int
-		sync.RWMutex
-	}{}
 )
-
-// Helper to generate MD5 hash for cache key
-func getMD5Hash(text string) string {
-	hasher := md5.New()
-	hasher.Write([]byte(text))
-	return hex.EncodeToString(hasher.Sum(nil))
-}
 
 type ResponseBody struct {
 	Tags []string `json:"tags"`
@@ -62,23 +47,13 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		return errorResponse("invalid_image", "The provided image_url is not a valid URL", 400)
 	}
 
-	// Create cache key from the image URL
 	cacheKey := getMD5Hash(requestBody.ImageUrl)
 
-	// Check if we have a cached response
 	cacheLock.RLock()
 	cachedTags, found := cache[cacheKey]
 	cacheLock.RUnlock()
 
 	if found {
-		// Update cache hit stats
-		cacheStats.Lock()
-		cacheStats.hits++
-		hitRate := float64(cacheStats.hits) / float64(cacheStats.hits+cacheStats.misses) * 100
-		fmt.Printf("Cache hit (%d hits, %d misses, %.2f%% hit rate)\n",
-			cacheStats.hits, cacheStats.misses, hitRate)
-		cacheStats.Unlock()
-
 		// Return cached response
 		response := ResponseBody{
 			Tags: cachedTags,
@@ -98,16 +73,17 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		}, nil
 	}
 
-	// Update cache miss stats
-	cacheStats.Lock()
-	cacheStats.misses++
-	hitRate := float64(cacheStats.hits) / float64(cacheStats.hits+cacheStats.misses) * 100
-	fmt.Printf("Cache miss (%d hits, %d misses, %.2f%% hit rate)\n",
-		cacheStats.hits, cacheStats.misses, hitRate)
-	cacheStats.Unlock()
+	imageData, err := fetchImage(requestBody.ImageUrl)
+	if err != nil {
+		return errorResponse("invalid_image", "The provided image_url is not a valid URL", 400)
+	}
 
-	// Get tags if not in cache
-	tags, err := getTags(requestBody.ImageUrl)
+	presignedUrl, err := storeImageInS3(imageData, cacheKey)
+	if err != nil {
+		return errorResponse("internal_error", "Sorry, unable to get the image. Please try again. You will not be charged for this request.", 500)
+	}
+
+	tags, err := getTags(presignedUrl)
 
 	if err != nil {
 		return errorResponse("internal_error", "Sorry, unable to find tags. Please try again. You will not be charged for this request.", 500)

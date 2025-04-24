@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -19,6 +21,12 @@ var SUPPORTED_FORMATS = []string{"image/jpeg", "image/png", "base64"}
 func isValidURL(str string) bool {
 	url, err := url.ParseRequestURI(str)
 	return err == nil && url.Scheme == "https" && url.Host != ""
+}
+
+func getMD5Hash(text string) string {
+	hasher := md5.New()
+	hasher.Write([]byte(text))
+	return hex.EncodeToString(hasher.Sum(nil))
 }
 
 func generateImageId() string {

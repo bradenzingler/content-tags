@@ -19,12 +19,15 @@ const IMAGE_FETCH_TIMEOUT = time.Second * 2
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024 // 5 MB
 var SUPPORTED_FORMATS = []string{"image/jpeg", "image/png"}
 
-func isValidURL(str string) bool {
+func isValidURL(str string) (bool) {
 	if isBase64Image(str) {
 		return true;
 	}
 	url, err := url.ParseRequestURI(str)
-	return err == nil && url.Scheme == "https" && url.Host != ""
+	if err != nil {
+		return false
+	}
+	return url.Scheme == "https" && url.Host != ""
 }
 
 func getMD5Hash(text string) string {
@@ -68,7 +71,11 @@ func extractBase64Data(str string) string {
 	if len(str) == 0 {
 		return ""
 	}
-	return strings.SplitN(str, ";base64,", 2)[1]
+	data := strings.SplitN(str, ";base64,", 2)
+	if len(data) < 2 {
+		return ""
+	}
+	return data[1]
 }
 
 func errorResponse(code string, description string, status int) (events.APIGatewayProxyResponse, error) {
@@ -86,3 +93,28 @@ func errorResponse(code string, description string, status int) (events.APIGatew
 	}, nil
 }
 
+func parseImageURL(req events.APIGatewayProxyRequest) (string, error) {
+	var requestBody RequestBody
+	err := json.Unmarshal([]byte(req.Body), &requestBody)
+	if err != nil {
+		return "", fmt.Errorf("the request body could not be parsed. please provide a valid input body")
+	}
+	
+	if requestBody.ImageUrl == "" {
+		return "", fmt.Errorf("the image_url field is missing from the request body")
+	}
+
+	if isBase64Image(requestBody.ImageUrl) {
+		data := extractBase64Data(requestBody.ImageUrl)
+		if len(data) == 0 {
+			return "", fmt.Errorf("the provided image_url is not a valid base64 image")
+		}
+		return data, nil
+	} 
+
+	if !isValidURL(requestBody.ImageUrl) {
+		return "", fmt.Errorf("the provided image_url is not a valid url")
+	}
+
+	return requestBody.ImageUrl, nil
+}

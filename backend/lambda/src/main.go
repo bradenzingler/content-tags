@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"sync"
 	"time"
 
@@ -33,20 +32,9 @@ type RequestBody struct {
 
 func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 
-	var requestBody RequestBody
-	err := json.Unmarshal([]byte(request.Body), &requestBody)
-
+	imageUrl, err := parseImageURL(request)
 	if err != nil {
-		fmt.Println(err)
-		return errorResponse("invalid_request", "The request body could not be parsed. Please provide a valid input body", 400)
-	}
-
-	if requestBody.ImageUrl == "" {
-		return errorResponse("invalid_request", "The 'image_url' field is missing.", 400)
-	}
-
-	if !isValidURL(requestBody.ImageUrl) {
-		return errorResponse("invalid_image", "The provided image_url is not a valid URL", 400)
+		return errorResponse("invalid_request", err.Error(), 400)
 	}
 
 	apiKey, err := getApiKeyFromHeaders(request)
@@ -60,7 +48,7 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 	}
 
 	if !valid {
-		return errorResponse("invalid_api_key", "The provided API key is invalid", 401)
+		return errorResponse("invalid_api_key", "api key is invalid", 401)
 	}
 
 	apiKeyInfo.Lock()
@@ -75,7 +63,7 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		return errorResponse("rate_limit_exceeded", "The provided API key has reached its rate limit", 429)
 	}
 
-	cacheKey := getMD5Hash(requestBody.ImageUrl)
+	cacheKey := getMD5Hash(imageUrl)
 
 	cacheLock.RLock()
 	cachedTags, found := cache[cacheKey]
@@ -102,14 +90,13 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 	}
 
 	var imageData []byte
-	if isBase64Image(requestBody.ImageUrl) {
-		base64Data := extractBase64Data(requestBody.ImageUrl)
-		imageData, err = base64.StdEncoding.DecodeString(base64Data)
+	if isBase64Image(imageUrl) {
+		imageData, err = base64.StdEncoding.DecodeString(imageUrl)
 		if err != nil {
-			return errorResponse("invalid_image", "The provided image_url is not a valid base64 image: "+err.Error(), 400)
+			return errorResponse("invalid_image", "The provided image_url is not a valid base64 image: " + err.Error(), 400)
 		}
 	} else {
-		imageData, err = fetchImage(requestBody.ImageUrl)
+		imageData, err = fetchImage(imageUrl)
 	}
 
 	if err != nil {

@@ -90,7 +90,7 @@ func getTags(imageURL string) ([]string, error) {
 		return nil, fmt.Errorf("failed to marshal request body: %v", err)
 	}
 
-	req.Header.Set("Authorization", "Bearer "+apiKey)
+	req.Header.Set("Authorization", "Bearer " + apiKey)
 	req.Header.Set("Content-Type", "application/json")
 	req.Body = io.NopCloser(bytes.NewBuffer(reqBody))
 

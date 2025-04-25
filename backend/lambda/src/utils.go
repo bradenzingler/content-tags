@@ -58,7 +58,17 @@ func fetchImage(url string) ([]byte, error) {
 }
 
 func isBase64Image(str string) bool {
+	if len(str) == 0 {
+		return false
+	}
 	return strings.HasPrefix(str, "data:image/") && strings.Contains(str, ";base64,")
+}
+
+func extractBase64Data(str string) string {
+	if len(str) == 0 {
+		return ""
+	}
+	return strings.SplitN(str, ";base64,", 2)[1]
 }
 
 func errorResponse(code string, description string, status int) (events.APIGatewayProxyResponse, error) {

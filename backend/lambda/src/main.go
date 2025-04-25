@@ -103,7 +103,8 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 
 	var imageData []byte
 	if isBase64Image(requestBody.ImageUrl) {
-		imageData, err = base64.URLEncoding.DecodeString(requestBody.ImageUrl)
+		base64Data := extractBase64Data(requestBody.ImageUrl)
+		imageData, err = base64.StdEncoding.DecodeString(base64Data)
 		if err != nil {
 			return errorResponse("invalid_image", "The provided image_url is not a valid base64 image: "+err.Error(), 400)
 		}

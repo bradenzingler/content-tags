@@ -124,7 +124,7 @@ export default async function Home() {
 
             <FeatureSection
                 headline="Simplify your content management"
-                videoSrc="/demo-5.mov"
+                videoSrc="/demo-1.mov"
                 videoSide="left"
                 pText="Effortlessly organize and track your content with automated tagging and categorization tools."
                 featureList={[

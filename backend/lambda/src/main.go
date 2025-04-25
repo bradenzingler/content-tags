@@ -67,7 +67,7 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 
 	apiKeyInfo.RateLimit = apiKeyInfo.RateLimit - 1
 	apiKeyInfo.TotalUsage = apiKeyInfo.TotalUsage + 1
-	apiKeyInfo.LastUsed = time.Now()
+	apiKeyInfo.LastUsed = time.Now().Unix()
 	apiKeyInfo.RequestCounts = append(apiKeyInfo.RequestCounts, time.Now())
 
 	if apiKeyInfo.RateLimit <= 0 {

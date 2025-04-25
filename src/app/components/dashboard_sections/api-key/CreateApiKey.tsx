@@ -1,14 +1,15 @@
+import { ApiKeyInfo } from "@/lib/ddb";
 import CopyButton from "./CopyButton";
 
 export default function CreateApiKeyModal({
-    apiKey,
+    apiKeyInfo,
     setCreatedNewApiKey
 }: {
     setCreatedNewApiKey: (createdNewApiKey: boolean) => void;
-    apiKey: string | null;
+    apiKeyInfo: ApiKeyInfo | null;
 }) {
 
-    if (!apiKey) return null;
+    if (!apiKeyInfo) return null;
     
 	return (
 		<div className="fixed inset-0 flex items-center justify-center bg-black/75">
@@ -20,8 +21,8 @@ export default function CreateApiKeyModal({
 				</p>
 				<div className="bg-white/85 p-2 rounded mb-4">
 					<code className="text-sm break-all flex  justify-between items-center">
-                    {apiKey}
-                        <CopyButton apiKey={apiKey} />
+                    {apiKeyInfo.apiKey}
+                        <CopyButton apiKey={apiKeyInfo.apiKey} />
                     </code>
 				</div>
                 <div className="flex items-center justify-center gap-4">

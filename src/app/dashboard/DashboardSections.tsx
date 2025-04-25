@@ -8,203 +8,158 @@ import NoApiKey from "../components/dashboard_sections/api-key/NoApiKey";
 import CreateApiKeyModal from "../components/dashboard_sections/api-key/CreateApiKey";
 import ApiKeyDisplay from "../components/dashboard_sections/api-key/ApiKeyDisplay";
 import WarningModal from "../components/dashboard_sections/api-key/WarningModal";
+import { ApiKeyInfo } from "@/lib/ddb";
 
 export default function DashboardSections({
-	apiKeyStart,
-	apiKeyId,
-	remainingRequests,
-	totalRequests,
-	refillDay,
-	lastRefilled,
-	planName,
-	createNewKey,
+    apiKeyInfo,
+    createNewKey,
     deleteKey,
 }: {
-	apiKeyStart: string;
-	apiKeyId: string | null;
-	remainingRequests: number;
-	totalRequests: number;
-	refillDay: number;
-	lastRefilled: number;
-	planName: string;
-	createNewKey: () => Promise<{ keyId: string; key: string }>;
+    apiKeyInfo: ApiKeyInfo | null;
+    createNewKey: () => Promise<ApiKeyInfo>;
     deleteKey: (keyId: string) => Promise<void>;
 }) {
-	const [tab, setCurrentTab] = useState("usage");
-	const [createdNewApiKey, setCreatedNewApiKey] = useState(false);
-	const [showRegenerateKeyWarning, setShowRegenerateKeyWarning] =
-		useState(false);
-	const [apiKey, setApiKey] = useState("");
+    const [tab, setCurrentTab] = useState("usage");
+    const [createdNewApiKey, setCreatedNewApiKey] = useState(false);
+    const [showRegenerateKeyWarning, setShowRegenerateKeyWarning] =
+        useState(false);
+    const [apiKeyResponse, setApiKeyResponse] = useState<ApiKeyInfo | null>(apiKeyInfo);
 
-	const today = new Date();
-	const currentDay = today.getDate();
-	const currentMonth = today.getMonth();
-	const currentYear = today.getFullYear();
+    
+    const createApiKey = async () => {
+        const response = await createNewKey();
+        setApiKeyResponse(response);
+        setCreatedNewApiKey(true);
+    };
 
-	// Calculate next refill date
-	const nextRefillDate =
-		currentDay > refillDay
-			? new Date(currentYear, currentMonth + 1, refillDay)
-			: new Date(currentYear, currentMonth, refillDay);
+    const regenerateApiKey = async () => {
+        if (!apiKeyResponse) return;
+        await deleteKey(apiKeyResponse.apiKey);
+        await createApiKey();
+    };
 
-	// Calculate time since last refill
-	const lastRefillDate = new Date(lastRefilled);
-	const timeSinceLastRefill = Math.floor(
-		(today.getTime() - lastRefillDate.getTime()) / (1000 * 60 * 60 * 24)
-	);
+    return (
+        <div className="flex flex-row w-full gap-8 justify-between">
+            {createdNewApiKey && (
+                <CreateApiKeyModal
+                    apiKeyInfo={apiKeyResponse}
+                    setCreatedNewApiKey={setCreatedNewApiKey}
+                />
+            )}
 
-	const createApiKey = async () => {
-		const response = await createNewKey();
-		setApiKey(response.key);
-		setCreatedNewApiKey(true);
-	};
+            {showRegenerateKeyWarning && (
+                <WarningModal
+                    regenerateKey={regenerateApiKey}
+                    setAcceptedWarning={setShowRegenerateKeyWarning}
+                />
+            )}
 
-	const regenerateApiKey = async () => {
-        if (!apiKeyId) return;
-		// delete old key
-        await deleteKey(apiKeyId);
-		await createApiKey();
-	};
-
-	return (
-		<div className="flex flex-row w-full gap-8 justify-between">
-			{createdNewApiKey && (
-				<CreateApiKeyModal
-					apiKey={apiKey}
-					setCreatedNewApiKey={setCreatedNewApiKey}
-				/>
-			)}
-
-			{showRegenerateKeyWarning && (
-				<WarningModal
-					regenerateKey={regenerateApiKey}
-					setAcceptedWarning={setShowRegenerateKeyWarning}
-				/>
-			)}
-
-			<aside className="w-full lg:w-1/4 border-r pr-4 border-r-teal-50/5">
-				<nav className="w-full flex flex-col items-center justify-center">
-					<ul className="space-y-4 w-full flex flex-col items-center">
-						<li className="w-full">
-							<button
-								className={`text-gray-200 w-full items-center gap-2 flex px-4 py-2 border border-white/25
-                                         hover:border-white/50 cursor-pointer rounded-lg transition-colors ${
-												tab === "usage"
-													? "bg-teal-500/85 text-white hover:bg-teal-500/90"
-													: "text-white/80 hover:border-white/50"
-											}`}
-								onClick={() => setCurrentTab("usage")}
-							>
-								<AiOutlineDashboard size={20} />
-								Dashboard
-							</button>
-						</li>
-						<li className="w-full">
-							<button
-								className={`text-gray-200 gap-2 items-center w-full flex px-4 py-2 border border-white/25
+            <aside className="w-full lg:w-1/4 border-r pr-4 border-r-teal-50/5">
+                <nav className="w-full flex flex-col items-center justify-center">
+                    <ul className="space-y-4 w-full flex flex-col items-center">
+                        <li className="w-full">
+                            <button
+                                className={`text-gray-200 w-full items-center gap-2 flex px-4 py-2 border border-white/25
+                                         hover:border-white/50 cursor-pointer rounded-lg transition-colors ${tab === "usage"
+                                        ? "bg-teal-500/85 text-white hover:bg-teal-500/90"
+                                        : "text-white/80 hover:border-white/50"
+                                    }`}
+                                onClick={() => setCurrentTab("usage")}
+                            >
+                                <AiOutlineDashboard size={20} />
+                                Dashboard
+                            </button>
+                        </li>
+                        <li className="w-full">
+                            <button
+                                className={`text-gray-200 gap-2 items-center w-full flex px-4 py-2 border border-white/25
                                         hover:border-white/50 cursor-pointer rounded-lg transition-colors
-                                        ${
-											tab === "api-keys"
-												? "bg-teal-500/85 text-white hover:bg-teal-500/90"
-												: "text-white/80 hover:border-white/50"
-										}`}
-								onClick={() => setCurrentTab("api-keys")}
-							>
-								<LuKeyRound size={20} />
-								API Key
-							</button>
-						</li>
-						<li className="w-full">
-							<button
-								className={`text-gray-200 items-center w-full gap-2 px-4 py-2 flex border border-white/25
+                                        ${tab === "api-keys"
+                                        ? "bg-teal-500/85 text-white hover:bg-teal-500/90"
+                                        : "text-white/80 hover:border-white/50"
+                                    }`}
+                                onClick={() => setCurrentTab("api-keys")}
+                            >
+                                <LuKeyRound size={20} />
+                                API Key
+                            </button>
+                        </li>
+                        <li className="w-full">
+                            <button
+                                className={`text-gray-200 items-center w-full gap-2 px-4 py-2 flex border border-white/25
                                         hover:border-white/50 cursor-pointer rounded-lg transition-colors
-                                        ${
-											tab === "billing"
-												? "bg-teal-500/85 text-white hover:bg-teal-500/90"
-												: "text-white/80 hover:border-white/50"
-										}`}
-								onClick={() => setCurrentTab("billing")}
-							>
-								<CiCreditCard1 size={20} />
-								Billing
-							</button>
-						</li>
-					</ul>
-				</nav>
-			</aside>
-			<div className="w-full lg:w-3/4">
-				{tab === "usage" ? (
-					<section className="flex flex-col">
-						<h1 className="text-white text-2xl tracking-tight font-semibold">
-							Dashboard
-						</h1>
-						{apiKeyId ? (
-							<div className="mt-8">
-								<UsageBar
-									totalRequests={totalRequests}
-									remainingRequests={remainingRequests}
-								/>
-								<p className="text-gray-100 mt-4">
-									Usage resets on{" "}
-									{nextRefillDate.toLocaleDateString(
-										"en-US",
-										{
-											year: "numeric",
-											month: "long",
-											day: "numeric",
-										}
-									)}
-								</p>
-								<p className="text-gray-100">
-									Last reset {timeSinceLastRefill} days ago
-								</p>
-							</div>
-						) : (
-							<NoApiKey createNewKey={createApiKey} />
-						)}
-					</section>
-				) : tab === "api-keys" ? (
-					<section className="flex flex-col">
-						<h1 className="text-white text-2xl tracking-tight font-semibold">
-							Your API key
-						</h1>
-						{apiKeyId ? (
-							<ApiKeyDisplay
-								setShowRegenerateKeyWarning={
-									setShowRegenerateKeyWarning
-								}
-								apiKeyStart={apiKeyStart}
-							/>
-						) : (
-							<NoApiKey createNewKey={createApiKey} />
-						)}
-					</section>
-				) : (
-					<section className="flex flex-col">
-						<h1 className="text-gray-200 text-2xl tracking-tight font-semibold">
-							Billing
-						</h1>
-						<p className="text-gray-100 mt-4">
-							You are currently on the
-							<span className="capitalize"> {planName} </span>
-							plan. (${getPlanCost(planName)}/month)
-						</p>
-					</section>
-				)}
-			</div>
-		</div>
-	);
+                                        ${tab === "billing"
+                                        ? "bg-teal-500/85 text-white hover:bg-teal-500/90"
+                                        : "text-white/80 hover:border-white/50"
+                                    }`}
+                                onClick={() => setCurrentTab("billing")}
+                            >
+                                <CiCreditCard1 size={20} />
+                                Billing
+                            </button>
+                        </li>
+                    </ul>
+                </nav>
+            </aside>
+            <div className="w-full lg:w-3/4">
+                {tab === "usage" ? (
+                    <section className="flex flex-col">
+                        <h1 className="text-white text-2xl tracking-tight font-semibold">
+                            Dashboard
+                        </h1>
+                        {apiKeyInfo?.apiKey ? (
+                            <div className="mt-8">
+                                <UsageBar
+                                    apiKeyInfo={apiKeyInfo}
+                                />
+                               
+                            </div>
+                        ) : (
+                            <NoApiKey createNewKey={createApiKey} />
+                        )}
+                    </section>
+                ) : tab === "api-keys" ? (
+                    <section className="flex flex-col">
+                        <h1 className="text-white text-2xl tracking-tight font-semibold">
+                            Your API key
+                        </h1>
+                        {apiKeyResponse?.apiKey ? (
+                            <ApiKeyDisplay
+                                setShowRegenerateKeyWarning={
+                                    setShowRegenerateKeyWarning
+                                }
+                                apiKeyStart={apiKeyResponse?.apiKey.slice(0, 4)}
+                            />
+                        ) : (
+                            <NoApiKey createNewKey={createApiKey} />
+                        )}
+                    </section>
+                ) : (
+                    <section className="flex flex-col">
+                        <h1 className="text-gray-200 text-2xl tracking-tight font-semibold">
+                            Billing
+                        </h1>
+                        <p className="text-gray-100 mt-4">
+                            You are currently on the
+                            <span className="capitalize"> {apiKeyInfo?.tier ?? "free"} </span>
+                            plan. (${getPlanCost(apiKeyInfo?.tier ?? "free")}/month)
+                        </p>
+                    </section>
+                )}
+            </div>
+        </div>
+    );
 }
 
 function getPlanCost(planName: string) {
-	switch (planName) {
-		case "free":
-			return 0;
-		case "pro":
-			return 10;
-		case "business":
-			return 55;
-		default:
-			return 0;
-	}
+    switch (planName) {
+        case "free":
+            return 0;
+        case "pro":
+            return 10;
+        case "business":
+            return 55;
+        default:
+            return 0;
+    }
 }

@@ -1,20 +1,25 @@
+import { ApiKeyInfo } from "@/lib/ddb";
 import React from "react";
+import { convertTierToUsageAmount } from "@/app/utils";
 
 interface UsageBarProps {
-	totalRequests: number;
-	remainingRequests: number;
+	apiKeyInfo: ApiKeyInfo;
 }
 
 const UsageBar: React.FC<UsageBarProps> = ({
-	totalRequests,
-	remainingRequests,
+	apiKeyInfo,
 }) => {
-	const usagePercentage = ((remainingRequests / totalRequests) * 100).toFixed(
+	const totalRequestsAvailabled = convertTierToUsageAmount(apiKeyInfo.tier);
+	const remainingRequests = totalRequestsAvailabled - apiKeyInfo.totalUsage;
+	const usagePercentage = ((remainingRequests / totalRequestsAvailabled) * 100).toFixed(
 		2
 	);
 
+    const nextRefill = new Date(apiKeyInfo.nextRefill);
+
 	return (
 		<div className="w-full">
+            <h3 className="text-white/85 mb-2 font-semibold">Usage resets on {nextRefill.toLocaleDateString()}</h3>
 			<div className="flex justify-between items-center mb-2">
 				<span className="text-sm font-medium text-gray-400">
 					{remainingRequests} credits remaining

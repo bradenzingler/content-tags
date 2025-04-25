@@ -46,9 +46,10 @@ type ApiKeyInfo struct {
 	UserID        string
 	RateLimit     int // Maximum requests per minute
 	TotalUsage    int // Total usage count
-	LastUsed      time.Time
+	LastUsed      int64
 	RequestCounts []time.Time // For rate limiting
-	Tier          string      // free, startup, scale, etc.
+	NextRefill    time.Time
+	Tier          string // free, startup, scale, etc.
 	Active        bool
 	sync.Mutex
 }
@@ -69,7 +70,7 @@ func getApiKeyFromHeaders(req events.APIGatewayProxyRequest) (string, error) {
 	}
 
 	if !strings.HasPrefix(authorizationHeader, "Bearer ") {
-		return "", fmt.Errorf("invalid authorization header format. Expected 'Bearer <api key>'")
+		return "", fmt.Errorf("invalid authorization header format. Expected Bearer <api key>")
 	}
 
 	apiKey := strings.TrimPrefix(authorizationHeader, "Bearer ")
@@ -135,11 +136,11 @@ func isValidApiKey(ctx context.Context, apiKey string) (bool, *ApiKeyInfo, error
 
 	// Update usage tracking
 	keyInfo.TotalUsage += USAGE_COST_PER_REQUEST
-	keyInfo.LastUsed = now
+	keyInfo.LastUsed = now.Unix()
 	keyInfo.RequestCounts = append(keyInfo.RequestCounts, now)
 
 	// Asynchronously update the database
-	go updateApiKeyUsage(context.Background(), apiKey, keyInfo.TotalUsage)
+	go updateApiKeyUsage(context.Background(), apiKey, USAGE_COST_PER_REQUEST)
 
 	return true, keyInfo, nil
 }
@@ -167,7 +168,7 @@ func loadApiKeyFromDB(ctx context.Context, apiKey string) (*ApiKeyInfo, error) {
 	keyInfo := &ApiKeyInfo{
 		Key:           apiKey,
 		RequestCounts: make([]time.Time, 0),
-		LastUsed:      time.Now(),
+		LastUsed:      time.Now().Unix(),
 		Active:        true,
 		RateLimit:     DEFAULT_RATE_LIMIT,
 		Tier:          "free",
@@ -203,16 +204,17 @@ func loadApiKeyFromDB(ctx context.Context, apiKey string) (*ApiKeyInfo, error) {
 	return keyInfo, nil
 }
 
-func updateApiKeyUsage(ctx context.Context, apiKey string, usageCount int) {
+func updateApiKeyUsage(ctx context.Context, apiKey string, usageIncrement int) {
+	now := time.Now().Unix()
 	_, err := ddbClient.UpdateItem(ctx, &dynamodb.UpdateItemInput{
 		TableName: aws.String(API_KEYS_TABLE),
 		Key: map[string]types.AttributeValue{
 			"api_key": &types.AttributeValueMemberS{Value: apiKey},
 		},
-		UpdateExpression: aws.String("SET total_usage = :usage, last_used = :time"),
+		UpdateExpression: aws.String("ADD total_usage :inc SET last_used = :time"),
 		ExpressionAttributeValues: map[string]types.AttributeValue{
-			":usage": &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", usageCount)},
-			":time":  &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
+			":inc":  &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", usageIncrement)},
+			":time": &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", now)},
 		},
 	})
 

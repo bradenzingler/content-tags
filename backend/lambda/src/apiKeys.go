@@ -94,6 +94,7 @@ func isValidApiKey(ctx context.Context, apiKey string) (bool, *ApiKeyInfo, error
 	apiKeysLock.RUnlock()
 
 	if !exists {
+		fmt.Printf("Cache miss for API key %s, loading from DB\n", apiKey)
 		// Load from DynamoDB
 		var err error
 		keyInfo, err = loadApiKeyFromDB(ctx, apiKey)
@@ -105,6 +106,8 @@ func isValidApiKey(ctx context.Context, apiKey string) (bool, *ApiKeyInfo, error
 		apiKeysLock.Lock()
 		apiKeys[apiKey] = keyInfo
 		apiKeysLock.Unlock()
+	} else {
+		fmt.Printf("Cache hit for API key %s, current usage: %d\n", apiKey, keyInfo.TotalUsage)
 	}
 
 	// Key validation checks
@@ -138,6 +141,7 @@ func isValidApiKey(ctx context.Context, apiKey string) (bool, *ApiKeyInfo, error
 	keyInfo.TotalUsage += USAGE_COST_PER_REQUEST
 	keyInfo.LastUsed = now.Unix()
 	keyInfo.RequestCounts = append(keyInfo.RequestCounts, now)
+	fmt.Printf("Updated in-memory usage for key %s to %d\n", apiKey, keyInfo.TotalUsage)
 
 	// Asynchronously update the database
 	go updateApiKeyUsage(context.Background(), apiKey, USAGE_COST_PER_REQUEST)
@@ -206,6 +210,8 @@ func loadApiKeyFromDB(ctx context.Context, apiKey string) (*ApiKeyInfo, error) {
 
 func updateApiKeyUsage(ctx context.Context, apiKey string, usageIncrement int) {
 	now := time.Now().Unix()
+	fmt.Printf("Updating DB for key %s, incrementing usage by %d\n", apiKey, usageIncrement)
+
 	_, err := ddbClient.UpdateItem(ctx, &dynamodb.UpdateItemInput{
 		TableName: aws.String(API_KEYS_TABLE),
 		Key: map[string]types.AttributeValue{
@@ -220,5 +226,7 @@ func updateApiKeyUsage(ctx context.Context, apiKey string, usageIncrement int) {
 
 	if err != nil {
 		fmt.Printf("Failed to update API key usage: %v\n", err)
+	} else {
+		fmt.Printf("Successfully updated DB for key %s\n", apiKey)
 	}
 }

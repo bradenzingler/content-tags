@@ -43,7 +43,7 @@ export default function UsageGraph({
 
 		// Deduplicate timestamps to prevent double counting
 		const uniqueTimestamps = [...new Set(requestCounts)];
-		
+
 		// Sort timestamps ascending
 		const sortedTimestamps = [...uniqueTimestamps].sort((a, b) => a - b);
 
@@ -52,16 +52,22 @@ export default function UsageGraph({
 			sortedTimestamps,
 			granularity
 		);
-		
+
 		// Add empty data points for continuous time series
-		const continuousData = createContinuousTimeSeries(groupedData, granularity);
-		
+		const continuousData = createContinuousTimeSeries(
+			groupedData,
+			granularity
+		);
+
 		setAllGroupedData(continuousData);
 
 		// Calculate total pages needed
-		const pages = Math.max(1, Math.ceil(continuousData.length / ITEMS_PER_PAGE));
+		const pages = Math.max(
+			1,
+			Math.ceil(continuousData.length / ITEMS_PER_PAGE)
+		);
 		setTotalPages(pages);
-		
+
 		// Reset to first page when granularity changes
 		setCurrentPage(0);
 
@@ -73,80 +79,106 @@ export default function UsageGraph({
 	useEffect(() => {
 		updateCurrentPageData(allGroupedData, currentPage);
 	}, [currentPage, allGroupedData]);
-	
+
 	// Create a continuous time series by filling in gaps
-	const createContinuousTimeSeries = (data: any[], granularity: Granularity) => {
+	const createContinuousTimeSeries = (
+		data: any[],
+		granularity: Granularity
+	) => {
 		if (data.length <= 1) return data;
-		
+
 		const result = [];
 		const timeUnit = getTimeUnitMilliseconds(granularity);
-		
+
 		// Sort data by timestamp
 		const sortedData = [...data].sort((a, b) => a.timestamp - b.timestamp);
-		
+
 		for (let i = 0; i < sortedData.length; i++) {
 			result.push(sortedData[i]);
-			
+
 			// If there's a next item and there's a gap, fill it
 			if (i < sortedData.length - 1) {
 				const current = sortedData[i];
 				const next = sortedData[i + 1];
 				const expectedNextTime = current.timestamp + timeUnit;
-				
+
 				// If there's a gap (more than one time unit)
 				if (next.timestamp - current.timestamp > timeUnit * 1.5) {
 					// Add empty data points for the gap
 					let timePoint = expectedNextTime;
-					
+
 					// Only add a few points in the middle for large gaps
-					const gapSize = Math.floor((next.timestamp - current.timestamp) / timeUnit) - 1;
+					const gapSize =
+						Math.floor(
+							(next.timestamp - current.timestamp) / timeUnit
+						) - 1;
 					if (gapSize > 10) {
 						// Add one point after current
-						result.push(createEmptyDataPoint(timePoint, granularity));
-						
+						result.push(
+							createEmptyDataPoint(timePoint, granularity)
+						);
+
 						// Add one point before next
-						result.push(createEmptyDataPoint(next.timestamp - timeUnit, granularity));
+						result.push(
+							createEmptyDataPoint(
+								next.timestamp - timeUnit,
+								granularity
+							)
+						);
 					} else {
 						// Fill in all gaps for smaller gaps
-						while (timePoint < next.timestamp - timeUnit/2) {
-							result.push(createEmptyDataPoint(timePoint, granularity));
+						while (timePoint < next.timestamp - timeUnit / 2) {
+							result.push(
+								createEmptyDataPoint(timePoint, granularity)
+							);
 							timePoint += timeUnit;
 						}
 					}
 				}
 			}
 		}
-		
+
 		return result.sort((a, b) => a.timestamp - b.timestamp);
 	};
-	
+
 	// Create an empty data point for a given timestamp
-	const createEmptyDataPoint = (timestamp: number, granularity: Granularity) => {
+	const createEmptyDataPoint = (
+		timestamp: number,
+		granularity: Granularity
+	) => {
 		const date = new Date(timestamp);
 		let formattedTime = formatTimeByGranularity(date, granularity);
-		
+
 		return {
 			time: formattedTime,
 			timestamp: timestamp,
 			date: date.toLocaleDateString(),
 			count: 0,
-			isEmpty: true
+			isEmpty: true,
 		};
 	};
-	
+
 	// Get the milliseconds for a time unit based on granularity
 	const getTimeUnitMilliseconds = (granularity: Granularity): number => {
 		switch (granularity) {
-			case "second": return 1000;
-			case "minute": return 60 * 1000;
-			case "hour": return 60 * 60 * 1000;
-			case "day": return 24 * 60 * 60 * 1000;
-			default: return 60 * 60 * 1000;
+			case "second":
+				return 1000;
+			case "minute":
+				return 60 * 1000;
+			case "hour":
+				return 60 * 60 * 1000;
+			case "day":
+				return 24 * 60 * 60 * 1000;
+			default:
+				return 60 * 60 * 1000;
 		}
 	};
-	
+
 	// Format a date based on granularity
-	const formatTimeByGranularity = (date: Date, granularity: Granularity): string => {
+	const formatTimeByGranularity = (
+		date: Date,
+		granularity: Granularity
+	): string => {
 		switch (granularity) {
 			case "second":
 				return date.toLocaleTimeString();
@@ -179,17 +211,17 @@ export default function UsageGraph({
 		// Get active data for current page
 		const start = page * ITEMS_PER_PAGE;
 		const end = Math.min(start + ITEMS_PER_PAGE, data.length);
-		
+
 		// Add context padding before and after, but respect data boundaries
 		const contextStart = Math.max(0, start - CONTEXT_PADDING);
 		const contextEnd = Math.min(data.length, end + CONTEXT_PADDING);
-		
+
 		const visibleData = data.slice(contextStart, contextEnd);
-		
+
 		// Find the maximum count value for y-axis scaling
-		const max = Math.max(...visibleData.map(item => item.count));
+		const max = Math.max(...visibleData.map((item) => item.count));
 		setMaxCount(max);
-		
+
 		setChartData(visibleData);
 	};
 
@@ -253,7 +285,7 @@ export default function UsageGraph({
 					timestamp: date.getTime(),
 					date: date.toLocaleDateString(),
 					count,
-					isEmpty: false
+					isEmpty: false,
 				};
 			})
 			.sort((a, b) => a.timestamp - b.timestamp);
@@ -261,18 +293,29 @@ export default function UsageGraph({
 
 	// Calculate the y-axis domain with padding at the top
 	const yAxisDomain = [0, maxCount > 0 ? Math.ceil(maxCount * 1.3) : 10];
-	
+
 	// Get date range for current page
 	let dateRangeText = "";
 	if (chartData.length > 0 && totalPages > 1) {
 		// Find first and last non-empty data points
-		const firstDataPoint = chartData.find(d => !d.isEmpty) || chartData[0];
-		const lastDataPoint = [...chartData].reverse().find(d => !d.isEmpty) || chartData[chartData.length - 1];
-		
+		const firstDataPoint =
+			chartData.find((d) => !d.isEmpty) || chartData[0];
+		const lastDataPoint =
+			[...chartData].reverse().find((d) => !d.isEmpty) ||
+			chartData[chartData.length - 1];
+
 		if (granularity === "day") {
-			dateRangeText = `${new Date(firstDataPoint.timestamp).toLocaleDateString()} - ${new Date(lastDataPoint.timestamp).toLocaleDateString()}`;
+			dateRangeText = `${new Date(
+				firstDataPoint.timestamp
+			).toLocaleDateString()} - ${new Date(
+				lastDataPoint.timestamp
+			).toLocaleDateString()}`;
 		} else {
-			dateRangeText = `${new Date(firstDataPoint.timestamp).toLocaleString()} - ${new Date(lastDataPoint.timestamp).toLocaleString()}`;
+			dateRangeText = `${new Date(
+				firstDataPoint.timestamp
+			).toLocaleString()} - ${new Date(
+				lastDataPoint.timestamp
+			).toLocaleString()}`;
 		}
 	}
 
@@ -313,11 +356,6 @@ export default function UsageGraph({
 					<div className="text-2xl font-bold text-white/85">
 						{totalRequests}
 					</div>
-					{requestCounts.length !== totalRequests && (
-						<div className="text-xs text-orange-400">
-							Deduplicated from {requestCounts.length}
-						</div>
-					)}
 				</div>
 				<div>
 					<div className="text-sm font-medium text-white/60">
@@ -339,7 +377,12 @@ export default function UsageGraph({
 						<ResponsiveContainer width="100%" height="100%">
 							<BarChart
 								data={chartData}
-								margin={{ top: 15, right: 30, left: 20, bottom: 25 }}
+								margin={{
+									top: 15,
+									right: 30,
+									left: 20,
+									bottom: 25,
+								}}
 								barSize={10} // Set a smaller constant width for bars
 							>
 								<CartesianGrid
@@ -352,7 +395,13 @@ export default function UsageGraph({
 									textAnchor="end"
 									height={60}
 									tick={{ fill: "rgba(255, 255, 255, 0.6)" }}
-									interval={Math.min(2, Math.max(0, Math.floor(chartData.length / 20)))} // Adjust label density based on data points
+									interval={Math.min(
+										2,
+										Math.max(
+											0,
+											Math.floor(chartData.length / 20)
+										)
+									)} // Adjust label density based on data points
 								/>
 								<YAxis
 									tick={{ fill: "rgba(255, 255, 255, 0.6)" }}
@@ -361,9 +410,13 @@ export default function UsageGraph({
 								/>
 								<Tooltip
 									labelFormatter={(value) => `Time: ${value}`}
-									formatter={(value, name) => [value, "Requests"]}
+									formatter={(value, name) => [
+										value,
+										"Requests",
+									]}
 									contentStyle={{
-										backgroundColor: "rgba(15, 23, 42, 0.9)",
+										backgroundColor:
+											"rgba(15, 23, 42, 0.9)",
 										border: "1px solid rgba(255, 255, 255, 0.2)",
 										color: "#fff",
 									}}
@@ -377,7 +430,7 @@ export default function UsageGraph({
 							</BarChart>
 						</ResponsiveContainer>
 					</div>
-					
+
 					{totalPages > 1 && (
 						<div className="flex items-center justify-between mt-4">
 							<button
@@ -391,11 +444,12 @@ export default function UsageGraph({
 							>
 								← Previous
 							</button>
-							
+
 							<div className="text-white/60 text-sm">
-								{dateRangeText} (Page {currentPage + 1} of {totalPages})
+								{dateRangeText} (Page {currentPage + 1} of{" "}
+								{totalPages})
 							</div>
-							
+
 							<button
 								onClick={handleNextPage}
 								disabled={currentPage === totalPages - 1}

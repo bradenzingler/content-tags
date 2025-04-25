@@ -10,3 +10,16 @@ export function convertTierToUsageAmount(tier: ApiKeyTier) {
         return 100;
     }
 }
+
+export function getPlanCost(planName: string) {
+    switch (planName) {
+        case "free":
+            return 0;
+        case "pro":
+            return 10;
+        case "business":
+            return 55;
+        default:
+            return 0;
+    }
+}

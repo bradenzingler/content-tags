@@ -34,7 +34,7 @@ export default async function DashboardPage() {
     }
 
     return (
-        <main className="flex items-center w-11/12 md:w-3/4 lg:w-7/12 mx-auto mt-28">
+        <main className="flex items-center w-11/12 md:w-3/4 lg:w-3/4 mx-auto mt-28">
             <DashboardSections
                 regenerateKey={regenerateApiKey}
                 createNewKey={createNewKey}

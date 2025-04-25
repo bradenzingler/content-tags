@@ -1,4 +1,4 @@
-import { getUserApiKey, createApiKey, deleteApiKey, getApiKeyInfo } from "@/lib/ddb";
+import { getUserApiKey, createApiKey, getApiKeyInfo, regenerateKey } from "@/lib/ddb";
 import { auth } from "@clerk/nextjs/server";
 import DashboardSections from "./DashboardSections";
 import { generateApiKey } from "@/lib/generateApiKeys";
@@ -19,9 +19,11 @@ export default async function DashboardPage() {
         console.log(apiKeyInfo);
     }
 
-    const deleteKey = async (apiKey: string) => {
+    const regenerateApiKey = async (apiKey: string, userId: string): Promise<ApiKeyInfo> => {
         "use server";
-        await deleteApiKey(apiKey, user.userId);
+        const newKey = generateApiKey();
+        const res = await regenerateKey(apiKey, userId, newKey);
+        return res;
     }
 
     const createNewKey = async () => {
@@ -34,7 +36,7 @@ export default async function DashboardPage() {
     return (
         <main className="flex items-center w-11/12 md:w-3/4 lg:w-7/12 mx-auto mt-28">
             <DashboardSections
-                deleteKey={deleteKey}
+                regenerateKey={regenerateApiKey}
                 createNewKey={createNewKey}
                 apiKeyInfo={apiKeyInfo}
             />

@@ -13,11 +13,11 @@ import { ApiKeyInfo } from "@/lib/ddb";
 export default function DashboardSections({
     apiKeyInfo,
     createNewKey,
-    deleteKey,
+    regenerateKey,
 }: {
     apiKeyInfo: ApiKeyInfo | null;
     createNewKey: () => Promise<ApiKeyInfo>;
-    deleteKey: (keyId: string) => Promise<void>;
+    regenerateKey: (apiKey: string, userId: string) => Promise<ApiKeyInfo>;
 }) {
     const [tab, setCurrentTab] = useState("usage");
     const [createdNewApiKey, setCreatedNewApiKey] = useState(false);
@@ -34,8 +34,8 @@ export default function DashboardSections({
 
     const regenerateApiKey = async () => {
         if (!apiKeyResponse) return;
-        await deleteKey(apiKeyResponse.apiKey);
-        await createApiKey();
+        const newKeyResponse = await regenerateKey(apiKeyResponse.apiKey, apiKeyResponse.userId);
+        setApiKeyResponse(newKeyResponse);
     };
 
     return (
@@ -128,7 +128,7 @@ export default function DashboardSections({
                                 setShowRegenerateKeyWarning={
                                     setShowRegenerateKeyWarning
                                 }
-                                apiKeyStart={apiKeyResponse?.apiKey.slice(0, 4)}
+                                apiKeyStart={apiKeyResponse?.apiKey.slice(0, 8)}
                             />
                         ) : (
                             <NoApiKey createNewKey={createApiKey} />

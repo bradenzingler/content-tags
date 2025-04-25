@@ -9,6 +9,7 @@ import CreateApiKeyModal from "../components/dashboard_sections/api-key/CreateAp
 import ApiKeyDisplay from "../components/dashboard_sections/api-key/ApiKeyDisplay";
 import WarningModal from "../components/dashboard_sections/api-key/WarningModal";
 import { ApiKeyInfo } from "@/lib/ddb";
+import UsageGraph from "../components/dashboard_sections/dashboard/UsageGraph";
 
 export default function DashboardSections({
     apiKeyInfo,
@@ -109,11 +110,11 @@ export default function DashboardSections({
                             Dashboard
                         </h1>
                         {apiKeyInfo?.apiKey ? (
-                            <div className="mt-8">
+                            <div className="mt-8 space-y-12">
                                 <UsageBar
                                     apiKeyInfo={apiKeyInfo}
                                 />
-                               
+                                <UsageGraph requestCounts={apiKeyInfo.requestCounts} />
                             </div>
                         ) : (
                             <NoApiKey createNewKey={createApiKey} />

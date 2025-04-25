@@ -227,16 +227,30 @@ func updateApiKeyUsage(ctx context.Context, apiKey string, usageIncrement int, r
 	now := time.Now().Unix()
 	fmt.Printf("Updating DB for key %s, incrementing usage by %d\n", apiKey, usageIncrement)
 
+	// Get most recent timestamp only
+	var mostRecentTimestamp time.Time
+	if len(requestCounts) > 0 {
+		mostRecentTimestamp = requestCounts[len(requestCounts)-1]
+	} else {
+		mostRecentTimestamp = time.Now()
+	}
+
+	// Only append the most recent timestamp
+	newCountsList := []types.AttributeValue{
+		&types.AttributeValueMemberN{Value: fmt.Sprintf("%d", mostRecentTimestamp.Unix())},
+	}
+
 	_, err := ddbClient.UpdateItem(ctx, &dynamodb.UpdateItemInput{
 		TableName: aws.String(API_KEYS_TABLE),
 		Key: map[string]types.AttributeValue{
 			"api_key": &types.AttributeValueMemberS{Value: apiKey},
 		},
-		UpdateExpression: aws.String("ADD total_usage :inc SET last_used = :time, request_counts = :counts"),
+		UpdateExpression: aws.String("ADD total_usage :inc SET last_used = :time, request_counts = list_append(if_not_exists(request_counts, :empty_list), :new_timestamp)"),
 		ExpressionAttributeValues: map[string]types.AttributeValue{
-			":inc":    &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", usageIncrement)},
-			":time":   &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", now)},
-			":counts": &types.AttributeValueMemberL{Value: convertTimeSliceToAttributeValues(requestCounts)},
+			":inc":           &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", usageIncrement)},
+			":time":          &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", now)},
+			":new_timestamp": &types.AttributeValueMemberL{Value: newCountsList},
+			":empty_list":    &types.AttributeValueMemberL{Value: []types.AttributeValue{}},
 		},
 	})
 

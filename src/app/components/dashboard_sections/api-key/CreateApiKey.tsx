@@ -13,7 +13,7 @@ export default function CreateApiKeyModal({
     
 	return (
 		<div className="fixed inset-0 flex items-center justify-center bg-black/75">
-			<div className="bg-teal-950/50 p-6 rounded-lg shadow-lg w-11/12 md:w-1/2 lg:w-1/3 xl:w-1/4">
+			<div className="bg-teal-950/50 p-6 rounded-lg shadow-lg w-11/12 md:w-1/2 lg:w-1/3">
 				<h2 className="text-lg text-white font-semibold mb-4">Your new API key</h2>
 				<p className="text-sm text-white/90 mb-4">
 					This is your new API key. Please copy it now, as you

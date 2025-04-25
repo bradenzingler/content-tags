@@ -36,6 +36,7 @@ export default function DashboardSections({
         if (!apiKeyResponse) return;
         const newKeyResponse = await regenerateKey(apiKeyResponse.apiKey, apiKeyResponse.userId);
         setApiKeyResponse(newKeyResponse);
+        setCreatedNewApiKey(true);
     };
 
     return (

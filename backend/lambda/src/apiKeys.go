@@ -144,7 +144,7 @@ func isValidApiKey(ctx context.Context, apiKey string) (bool, *ApiKeyInfo, error
 	fmt.Printf("Updated in-memory usage for key %s to %d\n", apiKey, keyInfo.TotalUsage)
 
 	// Asynchronously update the database
-	go updateApiKeyUsage(context.Background(), apiKey, USAGE_COST_PER_REQUEST)
+	go updateApiKeyUsage(context.Background(), apiKey, USAGE_COST_PER_REQUEST, keyInfo.RequestCounts)
 
 	return true, keyInfo, nil
 }
@@ -178,7 +178,6 @@ func loadApiKeyFromDB(ctx context.Context, apiKey string) (*ApiKeyInfo, error) {
 		Tier:          "free",
 	}
 
-	// Extract fields from DynamoDB response
 	if v, ok := result.Item["user_id"].(*types.AttributeValueMemberS); ok {
 		keyInfo.UserID = v.Value
 	}
@@ -205,10 +204,26 @@ func loadApiKeyFromDB(ctx context.Context, apiKey string) (*ApiKeyInfo, error) {
 		keyInfo.Active = v.Value
 	}
 
+	if v, ok := result.Item["last_used"].(*types.AttributeValueMemberN); ok {
+		var lastUsed int64
+		fmt.Sscanf(v.Value, "%d", &lastUsed)
+		keyInfo.LastUsed = lastUsed
+	}
+
+	if v, ok := result.Item["request_counts"].(*types.AttributeValueMemberL); ok {
+		for _, item := range v.Value {
+			if t, ok := item.(*types.AttributeValueMemberN); ok {
+				var timestamp int64
+				fmt.Sscanf(t.Value, "%d", &timestamp)
+				keyInfo.RequestCounts = append(keyInfo.RequestCounts, time.Unix(timestamp, 0))
+			}
+		}
+	}
+
 	return keyInfo, nil
 }
 
-func updateApiKeyUsage(ctx context.Context, apiKey string, usageIncrement int) {
+func updateApiKeyUsage(ctx context.Context, apiKey string, usageIncrement int, requestCounts []time.Time) {
 	now := time.Now().Unix()
 	fmt.Printf("Updating DB for key %s, incrementing usage by %d\n", apiKey, usageIncrement)
 
@@ -217,10 +232,11 @@ func updateApiKeyUsage(ctx context.Context, apiKey string, usageIncrement int) {
 		Key: map[string]types.AttributeValue{
 			"api_key": &types.AttributeValueMemberS{Value: apiKey},
 		},
-		UpdateExpression: aws.String("ADD total_usage :inc SET last_used = :time"),
+		UpdateExpression: aws.String("ADD total_usage :inc SET last_used = :time, request_counts = :counts"),
 		ExpressionAttributeValues: map[string]types.AttributeValue{
-			":inc":  &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", usageIncrement)},
-			":time": &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", now)},
+			":inc":    &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", usageIncrement)},
+			":time":   &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", now)},
+			":counts": &types.AttributeValueMemberL{Value: convertTimeSliceToAttributeValues(requestCounts)},
 		},
 	})
 
@@ -229,4 +245,12 @@ func updateApiKeyUsage(ctx context.Context, apiKey string, usageIncrement int) {
 	} else {
 		fmt.Printf("Successfully updated DB for key %s\n", apiKey)
 	}
+}
+
+func convertTimeSliceToAttributeValues(requestCounts []time.Time) []types.AttributeValue {
+	attributeValues := make([]types.AttributeValue, len(requestCounts))
+	for i, t := range requestCounts {
+		attributeValues[i] = &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", t.Unix())}
+	}
+	return attributeValues
 }

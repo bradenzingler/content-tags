@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"sync"
@@ -100,7 +101,16 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		}, nil
 	}
 
-	imageData, err := fetchImage(requestBody.ImageUrl)
+	var imageData []byte
+	if isBase64Image(requestBody.ImageUrl) {
+		imageData, err = base64.URLEncoding.DecodeString(requestBody.ImageUrl)
+		if err != nil {
+			return errorResponse("invalid_image", "The provided image_url is not a valid base64 image: "+err.Error(), 400)
+		}
+	} else {
+		imageData, err = fetchImage(requestBody.ImageUrl)
+	}
+
 	if err != nil {
 		return errorResponse("invalid_image", "The provided image_url is not a valid URL", 400)
 	}

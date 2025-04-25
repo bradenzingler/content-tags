@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -16,9 +17,12 @@ import (
 const DOCS_URL = "https://inferly.org/docs/errors/"
 const IMAGE_FETCH_TIMEOUT = time.Second * 2
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024 // 5 MB
-var SUPPORTED_FORMATS = []string{"image/jpeg", "image/png", "base64"}
+var SUPPORTED_FORMATS = []string{"image/jpeg", "image/png"}
 
 func isValidURL(str string) bool {
+	if isBase64Image(str) {
+		return true;
+	}
 	url, err := url.ParseRequestURI(str)
 	return err == nil && url.Scheme == "https" && url.Host != ""
 }
@@ -27,10 +31,6 @@ func getMD5Hash(text string) string {
 	hasher := md5.New()
 	hasher.Write([]byte(text))
 	return hex.EncodeToString(hasher.Sum(nil))
-}
-
-func generateImageId() string {
-	return fmt.Sprintf("%d", time.Now().UnixNano())
 }
 
 func fetchImage(url string) ([]byte, error) {
@@ -55,6 +55,10 @@ func fetchImage(url string) ([]byte, error) {
 	}
 
 	return data, nil
+}
+
+func isBase64Image(str string) bool {
+	return strings.HasPrefix(str, "data:image/") && strings.Contains(str, ";base64,")
 }
 
 func errorResponse(code string, description string, status int) (events.APIGatewayProxyResponse, error) {

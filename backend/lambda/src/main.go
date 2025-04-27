@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"sync"
 	"time"
 
@@ -12,8 +13,8 @@ import (
 )
 
 var (
-	cache      = make(map[string][]string)
-	cacheLock  = sync.RWMutex{}
+	cache     = make(map[string][]string)
+	cacheLock = sync.RWMutex{}
 )
 
 type ResponseBody struct {
@@ -42,9 +43,13 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		return errorResponse("invalid_api_key", err.Error(), 401)
 	}
 
-	valid, apiKeyInfo, err := isValidApiKey(ctx, apiKey)
+	valid, apiKeyInfo, status, err := isValidApiKey(ctx, apiKey)
 	if err != nil {
-		return errorResponse("invalid_api_key", err.Error(), 500)
+		return errorResponse("invalid_api_key", err.Error(), status)
+	}
+	if apiKeyInfo == nil {
+		fmt.Printf("The api key info was null, but the error was also null")
+		return errorResponse("internal_error", "an internal error occurred. you will not be charged for this request", 500)
 	}
 
 	if !valid {
@@ -70,19 +75,11 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 	cacheLock.RUnlock()
 
 	if found {
-		// Return cached response
+		// Return cached tags 
 		response := ResponseBody{
 			Tags: cachedTags,
 		}
-
-		responseJSON, err := json.Marshal(response)
-		if err != nil {
-			return events.APIGatewayProxyResponse{
-				StatusCode: 500,
-				Body:       `{"error": "Failed to marshal response"}`,
-			}, nil
-		}
-
+		responseJSON, _ := json.Marshal(response)
 		return events.APIGatewayProxyResponse{
 			StatusCode: 200,
 			Body:       string(responseJSON),
@@ -93,7 +90,7 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 	if isBase64Image(imageUrl) {
 		imageData, err = base64.StdEncoding.DecodeString(imageUrl)
 		if err != nil {
-			return errorResponse("invalid_image", "The provided image_url is not a valid base64 image: " + err.Error(), 400)
+			return errorResponse("invalid_image", "The provided image_url is not a valid base64 image: "+err.Error(), 400)
 		}
 	} else {
 		imageData, err = fetchImage(imageUrl)
@@ -105,7 +102,7 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 
 	presignedUrl, err := storeImageInS3(imageData, cacheKey)
 	if err != nil {
-		return errorResponse("internal_error", "Sorry, unable to get the image. Please try again. You will not be charged for this request.", 500)
+		return errorResponse("internal_error", "sorry, unable to get the image. Please try again. You will not be charged for this request.", 500)
 	}
 
 	tags, err := getTags(presignedUrl)
@@ -114,23 +111,13 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		return errorResponse("internal_error", "Sorry, unable to find tags. Please try again. You will not be charged for this request.", 500)
 	}
 
-	// Store in cache
+	// Store resulting tags in the cache
 	cacheLock.Lock()
 	cache[cacheKey] = tags
 	cacheLock.Unlock()
 
-	response := ResponseBody{
-		Tags: tags,
-	}
-
-	responseJSON, err := json.Marshal(response)
-	if err != nil {
-		return events.APIGatewayProxyResponse{
-			StatusCode: 500,
-			Body:       `{"error": "Failed to marshal response"}`,
-		}, nil
-	}
-
+	response := ResponseBody{Tags: tags}
+	responseJSON, _ := json.Marshal(response)
 	return events.APIGatewayProxyResponse{
 		StatusCode: 200,
 		Body:       string(responseJSON),

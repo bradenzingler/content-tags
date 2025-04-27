@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 	"sync"
 	"time"
@@ -15,7 +16,7 @@ import (
 )
 
 const API_KEYS_TABLE = "content-tags-api-keys"
-const DEFAULT_RATE_LIMIT = 60
+const DEFAULT_RATE_LIMIT = 40
 const USAGE_COST_PER_REQUEST = 1
 
 var (
@@ -32,7 +33,6 @@ func init() {
 		}
 
 		ddbClient = dynamodb.NewFromConfig(cfg)
-		fmt.Println("DynamoDB client initialized in global scope")
 	})
 }
 
@@ -53,61 +53,70 @@ type ApiKeyInfo struct {
 func getApiKeyFromHeaders(req events.APIGatewayProxyRequest) (string, error) {
 	headers := req.Headers
 
-	fmt.Println(headers)
-
 	if headers == nil {
 		return "", fmt.Errorf("missing authorization header")
 	}
-
+	
 	authorizationHeader := headers["authorization"]
-
 	if authorizationHeader == "" {
-		return "", fmt.Errorf("missing authorization header")
+		authorizationHeader = headers["Authorization"]
+		if authorizationHeader == "" {
+			return "", fmt.Errorf("missing authorization header")
+		}
 	}
 
-	if !strings.HasPrefix(authorizationHeader, "Bearer ") {
+	hasBearerInAuthorizationHeader := strings.HasPrefix(authorizationHeader, "Bearer ") || strings.HasPrefix(authorizationHeader, "bearer ")
+
+	if !hasBearerInAuthorizationHeader {
 		return "", fmt.Errorf("invalid authorization header format. Expected Bearer <api key>")
 	}
 
-	apiKey := strings.TrimPrefix(authorizationHeader, "Bearer ")
-
-	if apiKey == "" {
-		return "", fmt.Errorf("missing API key in authorization header")
+	var apiKey = ""
+	if strings.HasPrefix(authorizationHeader, "Bearer ") {
+		apiKey = strings.TrimPrefix(authorizationHeader, "Bearer ")
+	} else if strings.HasPrefix(authorizationHeader, "bearer ") {
+		apiKey = strings.TrimPrefix(authorizationHeader, "bearer ")
+	} else {
+		return "", fmt.Errorf("missing api key in authorization header")
 	}
 
 	return apiKey, nil
 }
 
-func isValidApiKey(ctx context.Context, apiKey string) (bool, *ApiKeyInfo, error) {
+func isValidApiKey(ctx context.Context, apiKey string) (isValid bool, key *ApiKeyInfo, status int, errorMsg error) {
 	if ddbClient == nil {
-		return false, nil, 
-		fmt.Errorf("sorry, an unexpected error occurred. you have not been charged for this request. please try again later")
+		log.Printf("ERROR - failed to initialize DDB client, was null inside isValidApiKey")
+		return false, 
+			nil,
+			500,
+			fmt.Errorf("sorry, an unexpected error occurred. you have not been charged for this request. please try again later")
 	}
 
 	keyInfo, exists := getKeyFromApiKeyCache(apiKey)
-
-	if !exists {
-		var err error
-		keyInfo, err = loadApiKeyFromDB(ctx, apiKey)
+	if !exists || keyInfo == nil {
+		loadedKeyInfo, statusCode, err := loadApiKeyFromDB(ctx, apiKey)
 		if err != nil {
-			return false, nil, err
+			log.Printf("ERROR - failed to load key from DB, error=%s", err.Error())
+			return false, nil, statusCode, err
 		}
-
+		keyInfo = loadedKeyInfo
 		saveKeyToApiKeyCache(keyInfo, apiKey)
-	} else {
-		fmt.Printf("Cache hit for API key %s, current usage: %d\n", apiKey, keyInfo.TotalUsage)
 	}
 
-	// Key validation checks
+	if keyInfo == nil {
+		fmt.Printf("The api key info was null after checking the cache and loading from the ddb table")
+		return false, nil, 500, fmt.Errorf("sorry, an unexpected error occurred. you have not been charged for this request")
+	}
+
 	keyInfo.Lock()
 	defer keyInfo.Unlock()
 
 	// Check if key is active
 	if !keyInfo.Active {
-		return false, nil, fmt.Errorf("API key is not active")
+		return false, nil, 401, fmt.Errorf("api key is not active")
 	}
 
-	// Rate limit check: Clean up old request counts
+	// Rate limit check
 	now := time.Now()
 	oneMinuteAgo := now.Add(-1 * time.Minute)
 
@@ -122,23 +131,21 @@ func isValidApiKey(ctx context.Context, apiKey string) (bool, *ApiKeyInfo, error
 
 	// Check rate limit
 	if len(keyInfo.RequestCounts) >= keyInfo.RateLimit {
-		return false, nil, fmt.Errorf("rate limit exceeded")
+		return false, nil, 429, fmt.Errorf("rate limit exceeded")
 	}
 
 	// Update usage tracking
 	keyInfo.TotalUsage += USAGE_COST_PER_REQUEST
 	keyInfo.LastUsed = now.Unix()
 	keyInfo.RequestCounts = append(keyInfo.RequestCounts, now)
-	fmt.Printf("Updated in-memory usage for key %s to %d\n", apiKey, keyInfo.TotalUsage)
 
 	// Asynchronously update the database
 	go updateApiKeyUsageInDB(context.Background(), apiKey, USAGE_COST_PER_REQUEST, keyInfo.RequestCounts)
 
-	return true, keyInfo, nil
+	return true, keyInfo, 200, nil
 }
 
-// Load API key information from DynamoDB
-func loadApiKeyFromDB(ctx context.Context, apiKey string) (*ApiKeyInfo, error) {
+func loadApiKeyFromDB(ctx context.Context, apiKey string) (key *ApiKeyInfo, status int, errorMsg error) {
 	// Query DynamoDB for the API key
 	result, err := ddbClient.GetItem(ctx, &dynamodb.GetItemInput{
 		TableName: aws.String(API_KEYS_TABLE),
@@ -148,15 +155,15 @@ func loadApiKeyFromDB(ctx context.Context, apiKey string) (*ApiKeyInfo, error) {
 	})
 
 	if err != nil {
-		return nil, fmt.Errorf("database error: %v", err)
+		log.Printf("ERROR - failed to get the API key from DDB. Error=%s", err.Error())
+		return nil, 500, fmt.Errorf("internal server error. you will not be charged for this request")
 	}
 
-	// Check if key was found
 	if result.Item == nil {
-		return nil, fmt.Errorf("API key not found")
+		return nil, 401, fmt.Errorf("api key is invalid")
 	}
 
-	// Parse the result
+	// Initialize the key info with default values
 	keyInfo := &ApiKeyInfo{
 		Key:           apiKey,
 		RequestCounts: make([]time.Time, 0),
@@ -208,7 +215,7 @@ func loadApiKeyFromDB(ctx context.Context, apiKey string) (*ApiKeyInfo, error) {
 		}
 	}
 
-	return keyInfo, nil
+	return keyInfo, 200, nil
 }
 
 func updateApiKeyUsageInDB(ctx context.Context, apiKey string, usageIncrement int, requestCounts []time.Time) {

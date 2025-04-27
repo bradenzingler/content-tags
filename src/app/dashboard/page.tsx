@@ -29,7 +29,7 @@ export default async function DashboardPage() {
     const createNewKey = async () => {
         "use server";
         const apiKey = generateApiKey();
-        const apiKeyInfo = await createApiKey(user.userId, apiKey, "free");
+        const apiKeyInfo = await createApiKey(user.userId, apiKey, "startup");
         return apiKeyInfo;
     }
 

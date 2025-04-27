@@ -45,7 +45,7 @@ type ApiKeyInfo struct {
 	LastUsed      int64
 	RequestCounts []time.Time // For rate limiting
 	NextRefill    time.Time
-	Tier          string // free, startup, scale, etc.
+	Tier          string // startup, growth, scale
 	Active        bool
 	sync.Mutex
 }
@@ -189,7 +189,7 @@ func loadApiKeyFromDB(ctx context.Context, apiKey string) (key *ApiKeyInfo, stat
 		LastUsed:      time.Now().Unix(),
 		Active:        true,
 		RateLimit:     DEFAULT_RATE_LIMIT,
-		Tier:          "free",
+		Tier:          "startup",
 		NextRefill:    time.Now().AddDate(0, 1, 0), // Default to 1 month from now
 	}
 

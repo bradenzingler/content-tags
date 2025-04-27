@@ -13,13 +13,13 @@ export default function BillingSection({ apiKeyInfo }: { apiKeyInfo: ApiKeyInfo 
                     You are currently on the
                     <span className="capitalize">
                         {" "}
-                        {apiKeyInfo?.tier ?? "free"}{" "}
+                        {apiKeyInfo?.tier ?? "startup"}{" "}
                     </span>
-                    plan (${getPlanCost(apiKeyInfo?.tier ?? "free")}/month).
+                    plan (${getPlanCost(apiKeyInfo?.tier ?? "startup")}/month).
                     Upgrade your plan to receive all the benefits of the Inferly API.
                 </p>
             </header>
-            <PricingSection currentTier={apiKeyInfo?.tier ?? "free"} />
+            <PricingSection />
 		</section>
 	);
 }

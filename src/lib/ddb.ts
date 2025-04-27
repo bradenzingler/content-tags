@@ -182,7 +182,7 @@ export async function regenerateKey(
 			total_usage: { N: oldKeyResponse.Attributes?.total_usage.N ?? "0" },
 			last_used: { N: oldKeyResponse.Attributes?.last_used.N ?? "0" },
 			next_refill: { N: oldKeyResponse.Attributes?.next_refill.N ?? "0" },
-			tier: { S: oldKeyResponse.Attributes?.tier.S ?? "free" },
+			tier: { S: oldKeyResponse.Attributes?.tier.S ?? "startup" },
 			active: { BOOL: oldKeyResponse.Attributes?.active.BOOL ?? true },
             request_counts: { L: oldKeyResponse.Attributes?.request_counts.L ?? [] },
 		},
@@ -208,9 +208,41 @@ export async function regenerateKey(
 				parseInt(item.N ?? "0")
 			) ?? [],
 		nextRefill: parseInt(oldKeyResponse.Attributes?.next_refill.N ?? "0"),
-		tier: (oldKeyResponse.Attributes?.tier.S as ApiKeyTier) ?? "free",
+		tier: (oldKeyResponse.Attributes?.tier.S as ApiKeyTier) ?? "startup",
 		active: oldKeyResponse.Attributes?.active.BOOL ?? true,
 	};
+}
+
+export async function updateUserTier(userId: string, newTier: ApiKeyTier): Promise<boolean> {
+    try {
+        // First, get the user's API key
+        const apiKey = await getUserApiKey(userId);
+        if (!apiKey) {
+            console.error(`No API key found for user ${userId}`);
+            return false;
+        }
+        
+        // Get the new rate limit based on the tier
+        const newRateLimit = getTierRateLimit(newTier);
+        
+        // Update the API key with the new tier and rate limit
+        await ddb.updateItem({
+            TableName: apiKeysTable,
+            Key: { api_key: { S: apiKey } },
+            UpdateExpression: "SET tier = :tier, rate_limit = :rateLimit",
+            ExpressionAttributeValues: {
+                ":tier": { S: newTier },
+                ":rateLimit": { N: newRateLimit.toString() }
+            },
+            ConditionExpression: "attribute_exists(api_key)" // Only update if the key exists
+        });
+        
+        console.log(`Successfully updated tier for user ${userId} to ${newTier} with rate limit ${newRateLimit}`);
+        return true;
+    } catch (error) {
+        console.error(`Error updating tier for user ${userId}:`, error);
+        return false;
+    }
 }
 
 export async function createApiKey(
@@ -268,4 +300,4 @@ export type ApiKeyInfo = {
 	active: boolean;
 };
 
-export type ApiKeyTier = "free" | "startup" | "growth" | "scale";
+export type ApiKeyTier = "startup" | "growth" | "scale";

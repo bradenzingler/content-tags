@@ -92,34 +92,10 @@ func isValidApiKey(ctx context.Context, apiKey string) (isValid bool, key *ApiKe
 			fmt.Errorf("sorry, an unexpected error occurred. you have not been charged for this request. please try again later")
 	}
 
-	keyInfo, exists := getKeyFromApiKeyCache(apiKey)
-	if exists && keyInfo != nil {
-		// If the key is in the cache, verify it still exists in the database
-		// This handles cases where a key has been regenerated but still exists in the cache
-		exists, err := keyExistsInDB(ctx, apiKey)
-		if err != nil {
-			log.Printf("ERROR - failed to verify if key exists in DB, error=%s", err.Error())
-			return false, nil, 500, fmt.Errorf("internal server error. you will not be charged for this request")
-		}
-
-		if !exists {
-			// Key was in cache but no longer in DB (was probably regenerated)
-			// Remove it from cache and treat as non-existent
-			removeKeyFromCache(apiKey)
-			keyInfo = nil
-			exists = false
-			log.Printf("INFO - key %s found in cache but not in DB, removing from cache", apiKey)
-		}
-	}
-
-	if !exists || keyInfo == nil {
-		loadedKeyInfo, statusCode, err := loadApiKeyFromDB(ctx, apiKey)
-		if err != nil {
-			log.Printf("ERROR - failed to load key from DB, error=%s", err.Error())
-			return false, nil, statusCode, err
-		}
-		keyInfo = loadedKeyInfo
-		saveKeyToApiKeyCache(keyInfo, apiKey)
+	keyInfo, statusCode, err := loadApiKeyFromDB(ctx, apiKey)
+	if err != nil {
+		log.Printf("ERROR - failed to load key from DB, error=%s", err.Error())
+		return false, nil, statusCode, err
 	}
 
 	if keyInfo == nil {
@@ -159,15 +135,28 @@ func isValidApiKey(ctx context.Context, apiKey string) (isValid bool, key *ApiKe
 	}
 	keyInfo.RequestCounts = recentRequests
 
-	// Check rate limit
-	if len(keyInfo.RequestCounts) > keyInfo.RateLimit {
+	// Log the current request count for debugging
+	log.Printf("INFO - API key %s: Current request count: %d, Rate limit: %d",
+		apiKey[:8], len(keyInfo.RequestCounts), keyInfo.RateLimit)
+
+	// Check rate limit - this current request counts as one request too
+	// If we have 9 recent requests and the limit is 10, we should allow this request (the 10th)
+	// But if we have 10 recent requests and the limit is 10, we should deny this request (the 11th)
+	if len(keyInfo.RequestCounts) >= keyInfo.RateLimit {
+		log.Printf("WARN - API key %s exceeded rate limit: %d requests in the last minute (limit: %d)",
+			apiKey[:8], len(keyInfo.RequestCounts), keyInfo.RateLimit)
 		return false, nil, 429, fmt.Errorf("rate limit exceeded")
 	}
 
+	// Add the current request to the count AFTER checking the limit
 	// Update usage tracking
 	keyInfo.TotalUsage += USAGE_COST_PER_REQUEST
 	keyInfo.LastUsed = now.Unix()
 	keyInfo.RequestCounts = append(keyInfo.RequestCounts, now)
+
+	// Log the updated request count
+	log.Printf("INFO - API key %s: Updated request count: %d (including current request)",
+		apiKey[:8], len(keyInfo.RequestCounts))
 
 	// Asynchronously update the database
 	go updateApiKeyUsageInDB(context.Background(), apiKey, USAGE_COST_PER_REQUEST, keyInfo.RequestCounts)
@@ -256,39 +245,47 @@ func loadApiKeyFromDB(ctx context.Context, apiKey string) (key *ApiKeyInfo, stat
 }
 
 func updateApiKeyUsageInDB(ctx context.Context, apiKey string, usageIncrement int, requestCounts []time.Time) {
-	now := time.Now().Unix()
+	now := time.Now()
+	oneMinuteAgo := now.Add(-1 * time.Minute)
 
-	// Get most recent timestamp only
-	var mostRecentTimestamp time.Time
-	if len(requestCounts) > 0 {
-		mostRecentTimestamp = requestCounts[len(requestCounts)-1]
-	} else {
-		mostRecentTimestamp = time.Now()
+	// Filter for timestamps in the last minute
+	recentCounts := []time.Time{}
+	for _, t := range requestCounts {
+		if t.After(oneMinuteAgo) {
+			recentCounts = append(recentCounts, t)
+		}
 	}
 
-	// Only append the most recent timestamp
-	newCountsList := []types.AttributeValue{
-		&types.AttributeValueMemberN{Value: fmt.Sprintf("%d", mostRecentTimestamp.Unix())},
+	// Convert recent timestamps to DynamoDB format
+	timestampsList := []types.AttributeValue{}
+	for _, t := range recentCounts {
+		timestampsList = append(timestampsList,
+			&types.AttributeValueMemberN{Value: fmt.Sprintf("%d", t.Unix())})
 	}
 
+	// If empty, create an empty list
+	if len(timestampsList) == 0 {
+		timestampsList = []types.AttributeValue{}
+	}
+
+	// Update DynamoDB with all the recent timestamps
 	_, err := ddbClient.UpdateItem(ctx, &dynamodb.UpdateItemInput{
 		TableName: aws.String(API_KEYS_TABLE),
 		Key: map[string]types.AttributeValue{
 			"api_key": &types.AttributeValueMemberS{Value: apiKey},
 		},
-		UpdateExpression: aws.String("ADD total_usage :inc SET last_used = :time, request_counts = list_append(if_not_exists(request_counts, :empty_list), :new_timestamp)"),
+		UpdateExpression: aws.String("ADD total_usage :inc SET last_used = :time, request_counts = :timestamps"),
 		ExpressionAttributeValues: map[string]types.AttributeValue{
-			":inc":           &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", usageIncrement)},
-			":time":          &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", now)},
-			":new_timestamp": &types.AttributeValueMemberL{Value: newCountsList},
-			":empty_list":    &types.AttributeValueMemberL{Value: []types.AttributeValue{}},
+			":inc":        &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", usageIncrement)},
+			":time":       &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", now.Unix())},
+			":timestamps": &types.AttributeValueMemberL{Value: timestampsList},
 		},
 	})
 
 	if err != nil {
 		fmt.Printf("Failed to update API key usage: %v\n", err)
 	} else {
-		fmt.Printf("Successfully updated DB for key %s\n", apiKey)
+		fmt.Printf("Successfully updated DB for key %s with %d recent timestamps\n", apiKey, len(timestampsList))
 	}
 }
 
@@ -307,13 +304,6 @@ func keyExistsInDB(ctx context.Context, apiKey string) (bool, error) {
 	}
 
 	return result.Item != nil, nil
-}
-
-// Remove a key from the cache
-func removeKeyFromCache(apiKey string) {
-	apiKeysLock.Lock()
-	delete(apiKeys, apiKey)
-	apiKeysLock.Unlock()
 }
 
 // Modify the resetUsageInDB function to handle non-existent keys gracefully
@@ -348,8 +338,6 @@ func resetUsageInDB(ctx context.Context, apiKey string, nextRefill time.Time) {
 	if err != nil {
 		if strings.Contains(err.Error(), "ConditionalCheckFailedException") {
 			fmt.Printf("API key %s was deleted during reset operation\n", apiKey)
-			// Also remove from cache if still there
-			removeKeyFromCache(apiKey)
 		} else {
 			fmt.Printf("Failed to reset API key usage: %v\n", err)
 		}

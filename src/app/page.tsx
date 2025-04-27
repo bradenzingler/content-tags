@@ -7,7 +7,6 @@ import FeatureSection from "./components/FeatureSection";
 
 export default async function Home() {
 	const user = await auth();
-
 	const isSignedIn = user.userId !== null;
 
 	const makeTagsRequest = async (

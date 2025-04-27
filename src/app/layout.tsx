@@ -3,6 +3,7 @@ import { Karla } from "next/font/google";
 import "./globals.css";
 import NavBar from "./components/NavBar";
 import { ClerkProvider } from "@clerk/nextjs";
+import Script from "next/script";
 
 const karla = Karla({
 	subsets: ["latin"],
@@ -22,6 +23,9 @@ export default function RootLayout({
 	return (
         <ClerkProvider>
             <html lang="en">
+                <head>
+                    <Script src="https://js.stripe.com/v3/pricing-table.js" strategy="afterInteractive" />
+                </head>
                 <body className={`${karla.className} antialiased bg-zinc-900`}>
                     <NavBar />
                     {children}

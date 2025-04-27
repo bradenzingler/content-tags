@@ -13,13 +13,14 @@ export function convertTierToUsageAmount(tier: ApiKeyTier) {
 
 export function getTierRateLimit(tier: ApiKeyTier) {
     if (tier === "free") {
-        return 1;
+        return 10;
     } else if (tier === "startup") {
-        return 2;
+        return 60;
     } else if (tier === "scale") {
-        return 5;
+        return 120;
     } else {
-        return 1;
+        console.error("Somehow an invalid api key tier, defaulting to free.");
+        return 10;
     }
 }
 

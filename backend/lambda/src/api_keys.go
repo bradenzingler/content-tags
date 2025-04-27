@@ -160,7 +160,7 @@ func isValidApiKey(ctx context.Context, apiKey string) (isValid bool, key *ApiKe
 	keyInfo.RequestCounts = recentRequests
 
 	// Check rate limit
-	if len(keyInfo.RequestCounts) >= keyInfo.RateLimit {
+	if len(keyInfo.RequestCounts) > keyInfo.RateLimit {
 		return false, nil, 429, fmt.Errorf("rate limit exceeded")
 	}
 

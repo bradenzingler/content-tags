@@ -59,14 +59,10 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 	apiKeyInfo.Lock()
 	defer apiKeyInfo.Unlock()
 
-	apiKeyInfo.RateLimit = apiKeyInfo.RateLimit - 1
+	// Just update usage information
 	apiKeyInfo.TotalUsage = apiKeyInfo.TotalUsage + 1
 	apiKeyInfo.LastUsed = time.Now().Unix()
 	apiKeyInfo.RequestCounts = append(apiKeyInfo.RequestCounts, time.Now())
-
-	if apiKeyInfo.RateLimit <= 0 {
-		return errorResponse("rate_limit_exceeded", "The provided API key has reached its rate limit", 429)
-	}
 
 	cacheKey := getMD5Hash(imageUrl)
 
@@ -75,7 +71,7 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 	cacheLock.RUnlock()
 
 	if found {
-		// Return cached tags 
+		// Return cached tags
 		response := ResponseBody{
 			Tags: cachedTags,
 		}

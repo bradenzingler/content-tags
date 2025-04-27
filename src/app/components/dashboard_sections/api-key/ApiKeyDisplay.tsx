@@ -11,7 +11,7 @@ export default function ApiKeyDisplay({
 		<div className="mt-6">
 			<p className="text-white/85 mb-6">
 				Use your API key in requests with the Authorization header.
-                With your current plan, you can make up to {rateLimit} request{rateLimit > 1 ? "s" : ""} per second.
+                With your current plan, you can make up to {rateLimit} request{rateLimit > 1 ? "s" : ""} per minute.
 			</p>
 			<div className="flex items-center gap-2">
 				<code className="text-white/85 select-none border-white/50 border px-4 py-1 rounded-md">

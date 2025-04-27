@@ -16,7 +16,7 @@ import (
 )
 
 const API_KEYS_TABLE = "content-tags-api-keys"
-const DEFAULT_RATE_LIMIT = 40
+const DEFAULT_RATE_LIMIT = 10
 const USAGE_COST_PER_REQUEST = 1
 
 var (
@@ -56,7 +56,7 @@ func getApiKeyFromHeaders(req events.APIGatewayProxyRequest) (string, error) {
 	if headers == nil {
 		return "", fmt.Errorf("missing authorization header")
 	}
-	
+
 	authorizationHeader := headers["authorization"]
 	if authorizationHeader == "" {
 		authorizationHeader = headers["Authorization"]
@@ -86,13 +86,32 @@ func getApiKeyFromHeaders(req events.APIGatewayProxyRequest) (string, error) {
 func isValidApiKey(ctx context.Context, apiKey string) (isValid bool, key *ApiKeyInfo, status int, errorMsg error) {
 	if ddbClient == nil {
 		log.Printf("ERROR - failed to initialize DDB client, was null inside isValidApiKey")
-		return false, 
+		return false,
 			nil,
 			500,
 			fmt.Errorf("sorry, an unexpected error occurred. you have not been charged for this request. please try again later")
 	}
 
 	keyInfo, exists := getKeyFromApiKeyCache(apiKey)
+	if exists && keyInfo != nil {
+		// If the key is in the cache, verify it still exists in the database
+		// This handles cases where a key has been regenerated but still exists in the cache
+		exists, err := keyExistsInDB(ctx, apiKey)
+		if err != nil {
+			log.Printf("ERROR - failed to verify if key exists in DB, error=%s", err.Error())
+			return false, nil, 500, fmt.Errorf("internal server error. you will not be charged for this request")
+		}
+
+		if !exists {
+			// Key was in cache but no longer in DB (was probably regenerated)
+			// Remove it from cache and treat as non-existent
+			removeKeyFromCache(apiKey)
+			keyInfo = nil
+			exists = false
+			log.Printf("INFO - key %s found in cache but not in DB, removing from cache", apiKey)
+		}
+	}
+
 	if !exists || keyInfo == nil {
 		loadedKeyInfo, statusCode, err := loadApiKeyFromDB(ctx, apiKey)
 		if err != nil {
@@ -116,8 +135,19 @@ func isValidApiKey(ctx context.Context, apiKey string) (isValid bool, key *ApiKe
 		return false, nil, 401, fmt.Errorf("api key is not active")
 	}
 
-	// Rate limit check
+	// Check if we need to reset usage based on next_refill
 	now := time.Now()
+	if !keyInfo.NextRefill.IsZero() && now.After(keyInfo.NextRefill) {
+		// Reset usage and set new refill date
+		nextRefill := now.AddDate(0, 1, 0) // 1 month from now
+		keyInfo.NextRefill = nextRefill
+		keyInfo.TotalUsage = 0
+
+		// Asynchronously update the next refill date and reset usage in DB
+		go resetUsageInDB(ctx, apiKey, nextRefill)
+	}
+
+	// Rate limit check
 	oneMinuteAgo := now.Add(-1 * time.Minute)
 
 	// Keep only requests from the last minute
@@ -171,6 +201,7 @@ func loadApiKeyFromDB(ctx context.Context, apiKey string) (key *ApiKeyInfo, stat
 		Active:        true,
 		RateLimit:     DEFAULT_RATE_LIMIT,
 		Tier:          "free",
+		NextRefill:    time.Now().AddDate(0, 1, 0), // Default to 1 month from now
 	}
 
 	if v, ok := result.Item["user_id"].(*types.AttributeValueMemberS); ok {
@@ -203,6 +234,12 @@ func loadApiKeyFromDB(ctx context.Context, apiKey string) (key *ApiKeyInfo, stat
 		var lastUsed int64
 		fmt.Sscanf(v.Value, "%d", &lastUsed)
 		keyInfo.LastUsed = lastUsed
+	}
+
+	if v, ok := result.Item["next_refill"].(*types.AttributeValueMemberN); ok {
+		var nextRefillUnix int64
+		fmt.Sscanf(v.Value, "%d", &nextRefillUnix)
+		keyInfo.NextRefill = time.Unix(nextRefillUnix/1000, 0) // Convert from milliseconds to Unix time
 	}
 
 	if v, ok := result.Item["request_counts"].(*types.AttributeValueMemberL); ok {
@@ -252,5 +289,71 @@ func updateApiKeyUsageInDB(ctx context.Context, apiKey string, usageIncrement in
 		fmt.Printf("Failed to update API key usage: %v\n", err)
 	} else {
 		fmt.Printf("Successfully updated DB for key %s\n", apiKey)
+	}
+}
+
+// Helper function to check if a key exists in the database
+func keyExistsInDB(ctx context.Context, apiKey string) (bool, error) {
+	result, err := ddbClient.GetItem(ctx, &dynamodb.GetItemInput{
+		TableName: aws.String(API_KEYS_TABLE),
+		Key: map[string]types.AttributeValue{
+			"api_key": &types.AttributeValueMemberS{Value: apiKey},
+		},
+		ProjectionExpression: aws.String("api_key"), // Only retrieve the key to minimize data transfer
+	})
+
+	if err != nil {
+		return false, err
+	}
+
+	return result.Item != nil, nil
+}
+
+// Remove a key from the cache
+func removeKeyFromCache(apiKey string) {
+	apiKeysLock.Lock()
+	delete(apiKeys, apiKey)
+	apiKeysLock.Unlock()
+}
+
+// Modify the resetUsageInDB function to handle non-existent keys gracefully
+func resetUsageInDB(ctx context.Context, apiKey string, nextRefill time.Time) {
+	nextRefillMs := nextRefill.UnixNano() / int64(time.Millisecond)
+
+	// First check if the key still exists
+	exists, err := keyExistsInDB(ctx, apiKey)
+	if err != nil {
+		fmt.Printf("Error checking if key exists during reset: %v\n", err)
+		return
+	}
+
+	if !exists {
+		fmt.Printf("Skipping reset for non-existent key: %s\n", apiKey)
+		return
+	}
+
+	_, err = ddbClient.UpdateItem(ctx, &dynamodb.UpdateItemInput{
+		TableName: aws.String(API_KEYS_TABLE),
+		Key: map[string]types.AttributeValue{
+			"api_key": &types.AttributeValueMemberS{Value: apiKey},
+		},
+		UpdateExpression: aws.String("SET total_usage = :zero, next_refill = :nextRefill"),
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":zero":       &types.AttributeValueMemberN{Value: "0"},
+			":nextRefill": &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", nextRefillMs)},
+		},
+		ConditionExpression: aws.String("attribute_exists(api_key)"), // Only update if the key exists
+	})
+
+	if err != nil {
+		if strings.Contains(err.Error(), "ConditionalCheckFailedException") {
+			fmt.Printf("API key %s was deleted during reset operation\n", apiKey)
+			// Also remove from cache if still there
+			removeKeyFromCache(apiKey)
+		} else {
+			fmt.Printf("Failed to reset API key usage: %v\n", err)
+		}
+	} else {
+		fmt.Printf("Successfully reset usage for key %s with next refill at %v\n", apiKey, nextRefill)
 	}
 }

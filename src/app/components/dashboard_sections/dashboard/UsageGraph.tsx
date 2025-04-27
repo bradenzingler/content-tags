@@ -14,7 +14,6 @@ import {
 // Granularity options
 type Granularity = "second" | "minute" | "hour" | "day";
 
-// Constants
 const ITEMS_PER_PAGE = 30; // Number of time periods to show per page
 const CONTEXT_PADDING = 5; // Number of time periods to add as context on each side
 

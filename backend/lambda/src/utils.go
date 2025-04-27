@@ -51,7 +51,6 @@ func fetchImage(url string) ([]byte, error) {
 	if resp.ContentLength > MAX_IMAGE_SIZE {
 		return nil, fmt.Errorf("image size of %d bytes exceeds the maximum limit of %d bytes", resp.ContentLength, MAX_IMAGE_SIZE)
 	}
-	
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err

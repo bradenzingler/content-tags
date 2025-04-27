@@ -1,4 +1,4 @@
-import { convertTierToUsageAmount } from "@/app/utils";
+import { convertTierToUsageAmount, getTierRateLimit } from "@/app/utils";
 import { DynamoDB } from "@aws-sdk/client-dynamodb";
 
 const apiKeysTable = process.env.API_KEY_TABLE;
@@ -61,7 +61,7 @@ export async function getApiKeyInfo(
 		return null;
 	}
 
-	return {
+	const keyInfo: ApiKeyInfo = {
 		apiKey: apiKey,
 		userId: response.Item.user_id.S,
 		rateLimit: parseInt(response.Item.rate_limit.N),
@@ -74,6 +74,85 @@ export async function getApiKeyInfo(
 		tier: response.Item.tier.S as ApiKeyTier,
 		active: response.Item.active.BOOL,
 	};
+
+	// Check if the API key usage needs to be reset
+	const now = Date.now();
+	if (now >= keyInfo.nextRefill) {
+		// Key has reached the refill date, reset it
+		return await resetKeyUsage(keyInfo);
+	}
+
+	return keyInfo;
+}
+
+export async function resetKeyUsage(apiKey: ApiKeyInfo): Promise<ApiKeyInfo> {
+    const now = Date.now();
+    
+    // Only reset if the current time is after the next refill time
+    if (now >= apiKey.nextRefill) {
+        // First, verify the key still exists in the database
+        try {
+            const keyExists = await verifyKeyExists(apiKey.apiKey);
+            if (!keyExists) {
+                console.error(`API key ${apiKey.apiKey.substring(0, 5)}... no longer exists in the database`);
+                return apiKey; // Return original key info without updating
+            }
+            
+            // Calculate the new next refill date (30 days from now)
+            const nextRefillDate = new Date();
+            nextRefillDate.setDate(nextRefillDate.getDate() + 30);
+            const nextRefillTimestamp = nextRefillDate.getTime();
+            
+            // Get the appropriate rate limit based on the tier
+            const rateLimit = getTierRateLimit(apiKey.tier);
+            
+            // Update the key in DynamoDB with a condition that it must exist
+            await ddb.updateItem({
+                TableName: apiKeysTable,
+                Key: { api_key: { S: apiKey.apiKey } },
+                UpdateExpression: "SET next_refill = :nextRefill, total_usage = :totalUsage, rate_limit = :rateLimit",
+                ExpressionAttributeValues: {
+                    ":nextRefill": { N: nextRefillTimestamp.toString() },
+                    ":totalUsage": { N: "0" },
+                    ":rateLimit": { N: rateLimit.toString() }
+                },
+                ConditionExpression: "attribute_exists(api_key)" // Only update if the item exists
+            });
+            
+            // Return the updated key info
+            return {
+                ...apiKey,
+                nextRefill: nextRefillTimestamp,
+                totalUsage: 0,
+                rateLimit: rateLimit
+            };
+        } catch (error: any) {
+            console.error("Error during key reset:", error);
+            // If we got a ConditionalCheckFailedException, the key doesn't exist anymore
+            if (error.name === 'ConditionalCheckFailedException') {
+                console.warn(`API key ${apiKey.apiKey.substring(0, 5)}... no longer exists in the database`);
+            }
+            return apiKey; // Return original info without modifying
+        }
+    }
+    
+    // If we're not resetting, return the original key info
+    return apiKey;
+}
+
+// Helper function to verify if a key exists in the database
+async function verifyKeyExists(apiKey: string): Promise<boolean> {
+    try {
+        const response = await ddb.getItem({
+            TableName: apiKeysTable,
+            Key: { api_key: { S: apiKey } },
+            ProjectionExpression: "api_key" // Only retrieve the key attribute to minimize data transfer
+        });
+        return !!response.Item; // Return true if the item exists
+    } catch (error) {
+        console.error("Error verifying key exists:", error);
+        return false;
+    }
 }
 
 export async function regenerateKey(
@@ -87,6 +166,12 @@ export async function regenerateKey(
 		Key: { api_key: { S: oldApiKey } },
 		ReturnValues: "ALL_OLD",
 	});
+	
+	// NOTE: If there was a frontend cache implementing similar logic as the backend,
+	// we would clear the old key from the cache here.
+	// Frontend code doesn't currently have an in-memory cache, but the backend does.
+	// The backend cache will be handled on the next API call when it checks for existence.
+	
 	// create new key in key table and transfer old key attributes
 	await ddb.putItem({
 		TableName: apiKeysTable,
@@ -133,7 +218,7 @@ export async function createApiKey(
 	apiKey: string,
 	tier: ApiKeyTier
 ): Promise<ApiKeyInfo> {
-	const rateLimit = convertTierToUsageAmount(tier);
+	const rateLimit = getTierRateLimit(tier);
 	const nextRefill = new Date();
 	nextRefill.setDate(nextRefill.getDate() + 30);
 

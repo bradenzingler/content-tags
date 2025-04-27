@@ -92,6 +92,7 @@ export default function DashboardSections({
 									setShowRegenerateKeyWarning
 								}
 								apiKeyStart={apiKeyResponse?.apiKey.slice(0, 8)}
+                                rateLimit={apiKeyInfo?.rateLimit ?? 0}
 							/>
 						) : (
 							<NoApiKey createNewKey={createApiKey} />

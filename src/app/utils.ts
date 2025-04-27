@@ -11,6 +11,18 @@ export function convertTierToUsageAmount(tier: ApiKeyTier) {
     }
 }
 
+export function getTierRateLimit(tier: ApiKeyTier) {
+    if (tier === "free") {
+        return 1;
+    } else if (tier === "startup") {
+        return 2;
+    } else if (tier === "scale") {
+        return 5;
+    } else {
+        return 1;
+    }
+}
+
 export function getPlanCost(planName: string) {
     switch (planName) {
         case "free":

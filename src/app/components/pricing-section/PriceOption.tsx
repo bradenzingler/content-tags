@@ -1,33 +1,30 @@
+import { convertTierToUsageAmount, getPlanCost } from "@/app/utils";
+import { ApiKeyTier } from "@/lib/ddb";
 import { auth } from "@clerk/nextjs/server";
 import Link from "next/link";
 import { FaCheck } from "react-icons/fa";
 
 export default async function PriceOption({
-	price,
 	title,
 	description,
 	features,
-	numCredits,
 }: {
-	price: string;
-	title: string;
+	title: ApiKeyTier;
 	description: string;
 	features: string[];
-	numCredits: number;
 }) {
 	const user = await auth();
 	const isSignedIn = user.userId !== null;
 
-    const numImage = (numCredits / 2).toLocaleString();
+    const numCredits = convertTierToUsageAmount(title);
+    const numImages = (numCredits).toLocaleString();
+    const price = getPlanCost(title);
 
 	return (
 		<div className="bg-white/5 w-11/12 mx-auto lg:w-1/4 lg:mx-0 rounded-lg p-8 flex flex-col justify-between">
-			<h3 className="text-3xl text-white font-bold tracking-tight mb-1">
+			<h3 className="text-3xl capitalize text-white font-bold tracking-tight mb-1">
 				{title}
 			</h3>
-			<p className="text-white/85 text-sm font-bold mb-4">
-				{numCredits.toLocaleString()} credits/month
-			</p>
 			<p className="text-white/75 mb-6">{description}</p>
 			<div className="flex items-end gap-1 mb-6">
 				<span className="text-5xl font-bold text-white">${price}</span>
@@ -42,7 +39,7 @@ export default async function PriceOption({
 			<ul className="list-disc list-inside mb-6">
 				<li className="text-white/75 flex items-center gap-2">
 					<FaCheck className="text-teal-600/85" />
-					{numImage} image requests
+					{numImages} image requests
 				</li>
 				{features.map((feature, index) => (
 					<li

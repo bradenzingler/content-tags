@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { FaTags } from "react-icons/fa";
 import Demo from "./components/hero-section/Demo";
-import PricingSection from "./components/pricing-section/page";
+import PricingSection from "./components/pricing-section/PricingSection";
 import { auth } from "@clerk/nextjs/server";
 import FeatureSection from "./components/FeatureSection";
 

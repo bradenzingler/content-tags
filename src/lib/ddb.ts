@@ -268,4 +268,4 @@ export type ApiKeyInfo = {
 	active: boolean;
 };
 
-export type ApiKeyTier = "free" | "startup" | "scale";
+export type ApiKeyTier = "free" | "startup" | "growth" | "scale";

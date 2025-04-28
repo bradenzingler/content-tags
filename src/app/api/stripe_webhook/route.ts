@@ -1,6 +1,6 @@
 import { stripe } from "@/lib/stripe";
 import { NextRequest, NextResponse } from "next/server";
-import { updateUserTier, ApiKeyTier, createApiKey } from "@/lib/ddb";
+import { updateUserTier, ApiKeyTier, createApiKey, getUserApiKey } from "@/lib/ddb";
 import { generateApiKey } from "@/lib/generateApiKeys";
 
 export const config = {
@@ -29,15 +29,24 @@ export async function POST(req: NextRequest) {
             const session = event.data.object;
             const userId = session.client_reference_id;
             const customer = session.customer as string;
-            console.log(customer);
-            stripe.customers.update(customer, {
-                metadata: { userId }
-            });
             
             if (!userId) {
                 console.error("No client_reference_id found in checkout session");
                 return NextResponse.json({ error: "Missing user ID" }, { status: 400 });
             }
+
+            // Check if user already has an API key
+            const existingApiKey = await getUserApiKey(userId);
+            if (existingApiKey) {
+                console.log(`User ${userId} already has an API key, skipping creation`);
+                return NextResponse.json({ received: true }, { status: 200 });
+            }
+
+            // Update customer metadata with userId
+            await stripe.customers.update(customer, {
+                metadata: { userId }
+            });
+
             const newApiKey = generateApiKey();
             
             // Extract the plan tier from the purchased product
@@ -57,14 +66,14 @@ export async function POST(req: NextRequest) {
                 return NextResponse.json({ error: "Missing plan tier" }, { status: 400 });
             }
             
-            // Update the user's tier in the database
+            // Create new API key with the selected tier
             const success = await createApiKey(userId, newApiKey, planTier);
             if (!success) {
-                console.error(`Failed to update tier for user ${userId}`);
-                return NextResponse.json({ error: "Failed to update tier" }, { status: 500 });
+                console.error(`Failed to create API key for user ${userId}`);
+                return NextResponse.json({ error: "Failed to create API key" }, { status: 500 });
             }
             
-            console.log(`Successfully updated tier for user ${userId} to ${planTier}`);
+            console.log(`Successfully created API key for user ${userId} with tier ${planTier}`);
         } else if (event.type === "customer.subscription.updated") {
             // User subscription updated (upgrade, downgrade, etc.)
             const subscription = event.data.object;

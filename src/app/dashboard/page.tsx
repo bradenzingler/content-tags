@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import DashboardSections from "./DashboardSections";
 import { generateApiKey } from "@/lib/generateApiKeys";
 import { ApiKeyInfo } from "@/lib/ddb";
+import { stripe } from "@/lib/stripe";
 
 export default async function DashboardPage() {
 
@@ -11,14 +12,22 @@ export default async function DashboardPage() {
     if (!user.userId) {
         return user.redirectToSignIn();
     }
-
+    
     const apiKey = await getUserApiKey(user.userId);
     let apiKeyInfo: ApiKeyInfo | null = null;
     if (apiKey) {
         apiKeyInfo = await getApiKeyInfo(apiKey);
-        console.log(apiKeyInfo);
     }
 
+    const customer = await stripe.customers.search({
+        query: `metadata["userId"]:"${user.userId}"`
+    })
+    const stripeSession = await stripe.billingPortal.sessions.create({
+        customer: `${customer.data[0].id}`,
+        return_url: process.env.NODE_ENV === "development" ? "http://localhost:3000/dashboard" : "https://inferly.org/dashboard"
+    });
+    console.log(stripeSession);
+    
     const regenerateApiKey = async (apiKey: string, userId: string): Promise<ApiKeyInfo> => {
         "use server";
         const newKey = generateApiKey();
@@ -39,6 +48,7 @@ export default async function DashboardPage() {
                 regenerateKey={regenerateApiKey}
                 createNewKey={createNewKey}
                 apiKeyInfo={apiKeyInfo}
+                stripePortalSessionUrl={stripeSession.url}
             />
         </main>
     );

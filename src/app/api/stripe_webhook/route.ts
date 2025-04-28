@@ -28,6 +28,11 @@ export async function POST(req: NextRequest) {
             // First time user is subscribing, they will need an API key
             const session = event.data.object;
             const userId = session.client_reference_id;
+            const customer = session.customer as string;
+            console.log(customer);
+            stripe.customers.update(customer, {
+                metadata: { userId }
+            });
             
             if (!userId) {
                 console.error("No client_reference_id found in checkout session");
@@ -46,7 +51,7 @@ export async function POST(req: NextRequest) {
             
             const product = await stripe.products.retrieve(productId);
             const planTier = product.metadata.tier as ApiKeyTier; 
-            
+
             if (!planTier) {
                 console.error("No tier information found in product metadata");
                 return NextResponse.json({ error: "Missing plan tier" }, { status: 400 });
@@ -66,16 +71,14 @@ export async function POST(req: NextRequest) {
             const customerId = subscription.customer as string;
             
             // Get the user ID from the customer ID
-            const customers = await stripe.customers.search({
-                query: `id:'${customerId}'`,
-            });
+            const customer = await stripe.customers.retrieve(customerId);
             
-            if (customers.data.length === 0) {
+            if (customer.deleted) {
                 console.error(`No customer found with ID ${customerId}`);
                 return NextResponse.json({ error: "Customer not found" }, { status: 400 });
             }
             
-            const userId = customers.data[0].metadata.userId;
+            const userId = customer.metadata.userId;
             if (!userId) {
                 console.error(`No user ID found for customer ${customerId}`);
                 return NextResponse.json({ error: "Missing user ID in customer metadata" }, { status: 400 });

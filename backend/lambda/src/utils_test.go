@@ -38,8 +38,8 @@ func TestIsValidUrl(t *testing.T) {
 
 func TestGetMD5Hash(t *testing.T) {
 	testCases := []struct {
-		text		string
-		expected 	string
+		text     string
+		expected string
 	}{
 		{"123", "202cb962ac59075b964b07152d234b70"},
 		{"https://example.com/image.jpg", "18867d45576d8283d6fabb82406789c8"},
@@ -51,7 +51,6 @@ func TestGetMD5Hash(t *testing.T) {
 		}
 	}
 }
-
 
 // Test the base64 image handling
 func TestBase64ImageHandling(t *testing.T) {
@@ -77,7 +76,7 @@ func TestBase64ImageHandling(t *testing.T) {
 		req := events.APIGatewayProxyRequest{
 			Body: `{"image_url": "` + testBase64 + `"}`,
 		}
-		url, err := parseImageURL(req)
+		url, err := parseImageData(req)
 		if err != nil {
 			t.Errorf("parseImageURL failed with base64 image: %v", err)
 		}
@@ -142,7 +141,7 @@ func TestParseImageURL(t *testing.T) {
 				Body: tc.body,
 			}
 
-			url, err := parseImageURL(req)
+			url, err := parseImageData(req)
 
 			if tc.expectError {
 				if err == nil {

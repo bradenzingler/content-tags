@@ -33,7 +33,7 @@ type RequestBody struct {
 
 func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 
-	imageUrl, err := parseImageURL(request)
+	imageUrl, err := parseImageData(request)
 	if err != nil {
 		return errorResponse("invalid_request", err.Error(), 400)
 	}

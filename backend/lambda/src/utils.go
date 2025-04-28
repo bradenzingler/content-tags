@@ -19,9 +19,9 @@ const IMAGE_FETCH_TIMEOUT = time.Second * 2
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024 // 5 MB
 var SUPPORTED_FORMATS = []string{"image/jpeg", "image/png"}
 
-func isValidURL(str string) (bool) {
+func isValidURL(str string) bool {
 	if isBase64Image(str) {
-		return true;
+		return true
 	}
 	url, err := url.ParseRequestURI(str)
 	if err != nil {
@@ -41,13 +41,13 @@ func fetchImage(url string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("request to image failed with status code: %d", resp.StatusCode)
 	}
-	
+
 	if resp.ContentLength > MAX_IMAGE_SIZE {
 		return nil, fmt.Errorf("image size of %d bytes exceeds the maximum limit of %d bytes", resp.ContentLength, MAX_IMAGE_SIZE)
 	}
@@ -79,26 +79,26 @@ func extractBase64Data(str string) string {
 
 func errorResponse(code string, description string, status int) (events.APIGatewayProxyResponse, error) {
 	errResp := ErrorResponseBody{
-		ErrorCode: code,
+		ErrorCode:        code,
 		DocumentationURL: DOCS_URL + code,
 		ErrorDescription: description,
 	}
 
-	jsonBody, _ := json.Marshal(errResp);
+	jsonBody, _ := json.Marshal(errResp)
 
 	return events.APIGatewayProxyResponse{
 		StatusCode: status,
-		Body: 		string(jsonBody),
+		Body:       string(jsonBody),
 	}, nil
 }
 
-func parseImageURL(req events.APIGatewayProxyRequest) (string, error) {
+func parseImageData(req events.APIGatewayProxyRequest) (string, error) {
 	var requestBody RequestBody
 	err := json.Unmarshal([]byte(req.Body), &requestBody)
 	if err != nil {
 		return "", fmt.Errorf("the request body could not be parsed. please provide a valid input body")
 	}
-	
+
 	if requestBody.ImageUrl == "" {
 		return "", fmt.Errorf("the image_url field is missing from the request body")
 	}
@@ -109,7 +109,7 @@ func parseImageURL(req events.APIGatewayProxyRequest) (string, error) {
 			return "", fmt.Errorf("the provided image_url is not a valid base64 image")
 		}
 		return data, nil
-	} 
+	}
 
 	if !isValidURL(requestBody.ImageUrl) {
 		return "", fmt.Errorf("the provided image_url is not a valid url")

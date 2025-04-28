@@ -12,15 +12,18 @@ import { ApiKeyInfo } from "@/lib/ddb";
 import UsageGraph from "../components/dashboard_sections/dashboard/UsageGraph";
 import BillingSection from "../components/dashboard_sections/billing/BillingSection";
 import DashboardSideNav from "../components/dashboard_sections/DashboardSideNav";
+import Stripe from "stripe";
 
 export default function DashboardSections({
 	apiKeyInfo,
 	createNewKey,
 	regenerateKey,
+	stripePortalSessionUrl,
 }: {
 	apiKeyInfo: ApiKeyInfo | null;
 	createNewKey: () => Promise<ApiKeyInfo>;
 	regenerateKey: (apiKey: string, userId: string) => Promise<ApiKeyInfo>;
+	stripePortalSessionUrl: string;
 }) {
 	const [tab, setCurrentTab] = useState("usage");
 	const [createdNewApiKey, setCreatedNewApiKey] = useState(false);
@@ -62,8 +65,8 @@ export default function DashboardSections({
 				/>
 			)}
 
-            <DashboardSideNav tab={tab} setCurrentTab={setCurrentTab} />
-			
+			<DashboardSideNav tab={tab} setCurrentTab={setCurrentTab} />
+
 			<div className="w-full lg:w-3/4">
 				{tab === "usage" ? (
 					<section className="flex flex-col">
@@ -92,14 +95,17 @@ export default function DashboardSections({
 									setShowRegenerateKeyWarning
 								}
 								apiKeyStart={apiKeyResponse?.apiKey.slice(0, 8)}
-                                rateLimit={apiKeyInfo?.rateLimit ?? 0}
+								rateLimit={apiKeyInfo?.rateLimit ?? 0}
 							/>
 						) : (
 							<NoApiKey createNewKey={createApiKey} />
 						)}
 					</section>
 				) : (
-					<BillingSection apiKeyInfo={apiKeyResponse} />
+					<BillingSection
+                        stripePortalUrl={stripePortalSessionUrl}
+						apiKeyInfo={apiKeyResponse}
+					/>
 				)}
 			</div>
 		</div>

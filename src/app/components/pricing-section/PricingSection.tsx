@@ -14,8 +14,8 @@ export default function PricingSection() {
 			</h3>
 			{React.createElement("stripe-pricing-table", {
 				"pricing-table-id": "prctbl_1RIb6fIdMOU0zo25MZCI5QNP",
-                "client-reference-id": user.user?.id,
-                "customer-email": user.user?.primaryEmailAddress,
+                "client-reference-id": user.user?.id ?? null,
+                "customer-email": user.user?.primaryEmailAddress ?? null,
 				"publishable-key":
 					"pk_test_51RIa7PIdMOU0zo25f7Lapvx2rKwqni5sv5UBIfZVzS126YcEfyaDpfDyySaz16QJz9i5hbSTcPcjvNzfBhCQoELx003KfQfrpC",
 			})}

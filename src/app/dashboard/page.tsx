@@ -1,32 +1,31 @@
 import { getUserApiKey, createApiKey, getApiKeyInfo, regenerateKey } from "@/lib/ddb";
-import { auth } from "@clerk/nextjs/server";
+import { auth, clerkClient } from "@clerk/nextjs/server";
 import DashboardSections from "./DashboardSections";
 import { generateApiKey } from "@/lib/generateApiKeys";
 import { ApiKeyInfo } from "@/lib/ddb";
 import { stripe } from "@/lib/stripe";
 
 export default async function DashboardPage() {
-
+    const authClient = await clerkClient();
     const user = await auth();
-
+    
     if (!user.userId) {
         return user.redirectToSignIn();
     }
-    
+    const userMetadata = (await authClient.users.getUser(user.userId)).privateMetadata;
+
     const apiKey = await getUserApiKey(user.userId);
     let apiKeyInfo: ApiKeyInfo | null = null;
     if (apiKey) {
         apiKeyInfo = await getApiKeyInfo(apiKey);
     }
 
-    const customer = await stripe.customers.search({
-        query: `metadata["userId"]:"${user.userId}"`
-    })
+    const customer = await stripe.customers.retrieve(userMetadata.stripeId as string);
+
     const stripeSession = await stripe.billingPortal.sessions.create({
-        customer: `${customer.data[0].id}`,
+        customer: `${customer.id}`,
         return_url: process.env.NODE_ENV === "development" ? "http://localhost:3000/dashboard" : "https://inferly.org/dashboard"
     });
-    console.log(stripeSession);
     
     const regenerateApiKey = async (apiKey: string, userId: string): Promise<ApiKeyInfo> => {
         "use server";

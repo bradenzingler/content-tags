@@ -1,5 +1,6 @@
 import { convertTierToUsageAmount, getTierRateLimit } from "@/app/utils";
 import { DynamoDB } from "@aws-sdk/client-dynamodb";
+import { generateApiKey } from "./generateApiKeys";
 
 const apiKeysTable = process.env.API_KEY_TABLE;
 const userKeysTable = process.env.USER_KEY_TABLE;
@@ -177,7 +178,7 @@ export async function regenerateKey(
 			total_usage: { N: oldKeyResponse.Attributes?.total_usage.N ?? "0" },
 			last_used: { N: oldKeyResponse.Attributes?.last_used.N ?? "0" },
 			next_refill: { N: oldKeyResponse.Attributes?.next_refill.N ?? "0" },
-			tier: { S: oldKeyResponse.Attributes?.tier.S ?? "startup" },
+			tier: { S: oldKeyResponse.Attributes?.tier.S ?? "free" },
 			active: { BOOL: oldKeyResponse.Attributes?.active.BOOL ?? true },
             request_counts: { L: oldKeyResponse.Attributes?.request_counts.L ?? [] },
 		},
@@ -203,7 +204,7 @@ export async function regenerateKey(
 				parseInt(item.N ?? "0")
 			) ?? [],
 		nextRefill: parseInt(oldKeyResponse.Attributes?.next_refill.N ?? "0"),
-		tier: (oldKeyResponse.Attributes?.tier.S as ApiKeyTier) ?? "startup",
+		tier: (oldKeyResponse.Attributes?.tier.S as ApiKeyTier) ?? "free",
 		active: oldKeyResponse.Attributes?.active.BOOL ?? true,
 	};
 }
@@ -312,4 +313,20 @@ export type ApiKeyInfo = {
 	active: boolean;
 };
 
-export type ApiKeyTier = "startup" | "growth" | "scale";
+export type ApiKeyTier = "free" | "startup" | "growth" | "scale";
+
+export async function createOrGetUserApiKeyInfo(userId: string): Promise<ApiKeyInfo> {
+	const existingApiKey = await getUserApiKey(userId);
+	let apiKeyInfo: ApiKeyInfo;
+	if (!existingApiKey) {
+		const newApiKey = generateApiKey();
+		apiKeyInfo = await createApiKey(userId, newApiKey, "free");
+	} else {
+		const existingKeyInfo = await getApiKeyInfo(existingApiKey);
+		if (!existingKeyInfo) {
+            throw new Error("Failed to retrieve existing API key info after creating a user");
+		}
+		apiKeyInfo = existingKeyInfo;
+	}
+    return apiKeyInfo;
+}

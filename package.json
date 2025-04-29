@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack && stripe listen --forward-to localhost:3000/api/stripe_webhook",
+    "dev": "next dev --turbopack",
+    "stripe-dev": "stripe listen --forward-to localhost:3000/api/stripe_webhook",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",

@@ -4,6 +4,7 @@ import DashboardSections from "./DashboardSections";
 import { generateApiKey } from "@/lib/generateApiKeys";
 import { ApiKeyInfo } from "@/lib/ddb";
 import { stripe } from "@/lib/stripe";
+import Stripe from "stripe";
 
 export default async function DashboardPage() {
     const authClient = await clerkClient();
@@ -20,7 +21,15 @@ export default async function DashboardPage() {
         apiKeyInfo = await getApiKeyInfo(apiKey);
     }
 
-    const customer = await stripe.customers.retrieve(userMetadata.stripeId as string);
+    if (!userMetadata.stripeId) {
+        console.error("No stripeId found in user metadata");
+        return new Response("Missing stripeId", { status: 400 });
+    }
+    
+    const customer = await stripe.customers.retrieve(userMetadata.stripeId as string) as Stripe.Customer;
+
+    // Check subscription status from Clerk metadata
+    const hasActiveSubscription = userMetadata.hasActiveSubscription === true;
 
     const stripeSession = await stripe.billingPortal.sessions.create({
         customer: `${customer.id}`,
@@ -36,6 +45,9 @@ export default async function DashboardPage() {
 
     const createNewKey = async () => {
         "use server";
+        if (!hasActiveSubscription) {
+            throw new Error("You need an active subscription to generate an API key");
+        }
         const apiKey = generateApiKey();
         const apiKeyInfo = await createApiKey(user.userId, apiKey, "startup");
         return apiKeyInfo;
@@ -47,7 +59,9 @@ export default async function DashboardPage() {
                 regenerateKey={regenerateApiKey}
                 createNewKey={createNewKey}
                 apiKeyInfo={apiKeyInfo}
+                stripeCustomer={customer}
                 stripePortalSessionUrl={stripeSession.url}
+                hasActiveSubscription={hasActiveSubscription}
             />
         </main>
     );

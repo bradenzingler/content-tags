@@ -8,7 +8,7 @@ import NoApiKey from "../components/dashboard_sections/api-key/NoApiKey";
 import CreateApiKeyModal from "../components/dashboard_sections/api-key/CreateApiKey";
 import ApiKeyDisplay from "../components/dashboard_sections/api-key/ApiKeyDisplay";
 import WarningModal from "../components/dashboard_sections/api-key/WarningModal";
-import { ApiKeyInfo } from "@/lib/ddb";
+import { ApiKeyInfo, ApiKeyTier } from "@/lib/ddb";
 import UsageGraph from "../components/dashboard_sections/dashboard/UsageGraph";
 import BillingSection from "../components/dashboard_sections/billing/BillingSection";
 import DashboardSideNav from "../components/dashboard_sections/DashboardSideNav";
@@ -18,12 +18,16 @@ export default function DashboardSections({
 	apiKeyInfo,
 	createNewKey,
 	regenerateKey,
+    stripeCustomer,
 	stripePortalSessionUrl,
+    hasActiveSubscription,
 }: {
 	apiKeyInfo: ApiKeyInfo | null;
 	createNewKey: () => Promise<ApiKeyInfo>;
 	regenerateKey: (apiKey: string, userId: string) => Promise<ApiKeyInfo>;
+    stripeCustomer: Stripe.Customer;
 	stripePortalSessionUrl: string;
+    hasActiveSubscription: boolean;
 }) {
 	const [tab, setCurrentTab] = useState("usage");
 	const [createdNewApiKey, setCreatedNewApiKey] = useState(false);
@@ -34,9 +38,13 @@ export default function DashboardSections({
 	);
 
 	const createApiKey = async () => {
-		const response = await createNewKey();
-		setApiKeyResponse(response);
-		setCreatedNewApiKey(true);
+		try {
+			const response = await createNewKey();
+			setApiKeyResponse(response);
+			setCreatedNewApiKey(true);
+		} catch (error) {
+			alert(error instanceof Error ? error.message : "Failed to create API key");
+		}
 	};
 
 	const regenerateApiKey = async () => {
@@ -103,6 +111,7 @@ export default function DashboardSections({
 					</section>
 				) : (
 					<BillingSection
+                        currentTier={stripeCustomer.metadata.tier as ApiKeyTier}
                         stripePortalUrl={stripePortalSessionUrl}
 						apiKeyInfo={apiKeyResponse}
 					/>

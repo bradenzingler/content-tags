@@ -2,6 +2,8 @@ import { stripe } from "@/lib/stripe";
 import { NextRequest, NextResponse } from "next/server";
 import { updateUserTier, ApiKeyTier, createApiKey, getUserApiKey } from "@/lib/ddb";
 import { generateApiKey } from "@/lib/generateApiKeys";
+import { clerkClient } from "@clerk/nextjs/server";
+import Stripe from "stripe";
 
 export const config = {
 	api: {
@@ -23,6 +25,7 @@ export async function POST(req: NextRequest) {
 
     try {
         const event = stripe.webhooks.constructEvent(buffer, sig, process.env.STRIPE_WEBHOOK_SIGNING_SECRET!);
+        const clerk = await clerkClient();
         
         if (event.type === "checkout.session.completed") {
             // First time user is subscribing, they will need an API key
@@ -35,16 +38,17 @@ export async function POST(req: NextRequest) {
                 return NextResponse.json({ error: "Missing user ID" }, { status: 400 });
             }
 
-            // Check if user already has an API key
-            const existingApiKey = await getUserApiKey(userId);
-            if (existingApiKey) {
-                console.log(`User ${userId} already has an API key, skipping creation`);
-                return NextResponse.json({ received: true }, { status: 200 });
-            }
-
             // Update customer metadata with userId
             await stripe.customers.update(customer, {
                 metadata: { userId }
+            });
+
+            // Update Clerk user metadata with subscription status
+            await clerk.users.updateUserMetadata(userId, {
+                privateMetadata: {
+                    hasActiveSubscription: true,
+                    stripeId: customer
+                }
             });
 
             const newApiKey = generateApiKey();
@@ -78,9 +82,9 @@ export async function POST(req: NextRequest) {
             // User subscription updated (upgrade, downgrade, etc.)
             const subscription = event.data.object;
             const customerId = subscription.customer as string;
-            
+
             // Get the user ID from the customer ID
-            const customer = await stripe.customers.retrieve(customerId);
+            const customer = await stripe.customers.retrieve(customerId) as Stripe.Customer;
             
             if (customer.deleted) {
                 console.error(`No customer found with ID ${customerId}`);
@@ -92,6 +96,15 @@ export async function POST(req: NextRequest) {
                 console.error(`No user ID found for customer ${customerId}`);
                 return NextResponse.json({ error: "Missing user ID in customer metadata" }, { status: 400 });
             }
+            
+            // Update Clerk user metadata with subscription status
+            console.log(subscription.status);
+            await clerk.users.updateUserMetadata(userId, {
+                privateMetadata: {
+                    hasActiveSubscription: subscription.status === 'active',
+                    stripeId: customerId
+                }
+            });
             
             // Get the current plan from the subscription
             const productId = subscription.items.data[0]?.price.product as string;
@@ -111,6 +124,23 @@ export async function POST(req: NextRequest) {
             }
             
             console.log(`Successfully updated subscription for user ${userId} to ${planTier}`);
+        } else if (event.type === "customer.subscription.deleted") {
+            // Handle subscription cancellation
+            const subscription = event.data.object;
+            const customerId = subscription.customer as string;
+            
+            const customer = await stripe.customers.retrieve(customerId) as Stripe.Customer;
+            const userId = customer.metadata.userId;
+            
+            if (userId) {
+                // Update Clerk user metadata to reflect cancelled subscription
+                await clerk.users.updateUserMetadata(userId, {
+                    privateMetadata: {
+                        hasActiveSubscription: false,
+                        stripeId: customerId
+                    }
+                });
+            }
         }
         
         return NextResponse.json({ received: true }, { status: 200 });

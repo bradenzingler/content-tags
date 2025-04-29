@@ -102,7 +102,7 @@ export default function DashboardSections({
 								setShowRegenerateKeyWarning={
 									setShowRegenerateKeyWarning
 								}
-								apiKeyStart={apiKeyResponse?.apiKey.slice(0, 8)}
+								apiKey={apiKeyResponse?.apiKey}
 								rateLimit={apiKeyInfo?.rateLimit ?? 0}
 							/>
 						) : (

@@ -1,6 +1,6 @@
 import { stripe } from "@/lib/stripe";
 import { NextRequest, NextResponse } from "next/server";
-import { updateUserTier, ApiKeyTier, createApiKey, getUserApiKey } from "@/lib/ddb";
+import { updateUserTier, ApiKeyTier, createApiKey, getUserApiKey, deleteApiKey } from "@/lib/ddb";
 import { generateApiKey } from "@/lib/generateApiKeys";
 import { clerkClient } from "@clerk/nextjs/server";
 import Stripe from "stripe";
@@ -90,26 +90,31 @@ export async function POST(req: NextRequest) {
                 console.error(`No customer found with ID ${customerId}`);
                 return NextResponse.json({ error: "Customer not found" }, { status: 400 });
             }
-            
             const userId = customer.metadata.userId;
             if (!userId) {
                 console.error(`No user ID found for customer ${customerId}`);
                 return NextResponse.json({ error: "Missing user ID in customer metadata" }, { status: 400 });
             }
-            
-            // Update Clerk user metadata with subscription status
-            console.log(subscription.status);
-            await clerk.users.updateUserMetadata(userId, {
-                privateMetadata: {
-                    hasActiveSubscription: subscription.status === 'active',
-                    stripeId: customerId
-                }
-            });
-            
+
             // Get the current plan from the subscription
             const productId = subscription.items.data[0]?.price.product as string;
             const product = await stripe.products.retrieve(productId);
             const planTier = product.metadata.tier as ApiKeyTier;
+            
+            // Update Clerk user metadata with subscription status
+            await clerk.users.updateUserMetadata(userId, {
+                privateMetadata: {
+                    tier: planTier,
+                    hasActiveSubscription: subscription.status === 'active',
+                    stripeId: customerId
+                }
+            });
+
+            await stripe.customers.update(customerId, {
+                metadata: {
+                    tier: planTier
+                }
+            });
             
             if (!planTier) {
                 console.error("No tier information found in product metadata");
@@ -140,6 +145,7 @@ export async function POST(req: NextRequest) {
                         stripeId: customerId
                     }
                 });
+                await deleteApiKey(userId);
             }
         }
         

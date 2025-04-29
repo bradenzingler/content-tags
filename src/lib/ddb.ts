@@ -167,11 +167,6 @@ export async function regenerateKey(
 		ReturnValues: "ALL_OLD",
 	});
 	
-	// NOTE: If there was a frontend cache implementing similar logic as the backend,
-	// we would clear the old key from the cache here.
-	// Frontend code doesn't currently have an in-memory cache, but the backend does.
-	// The backend cache will be handled on the next API call when it checks for existence.
-	
 	// create new key in key table and transfer old key attributes
 	await ddb.putItem({
 		TableName: apiKeysTable,
@@ -243,6 +238,23 @@ export async function updateUserTier(userId: string, newTier: ApiKeyTier): Promi
         console.error(`Error updating tier for user ${userId}:`, error);
         return false;
     }
+}
+
+export async function deleteApiKey(userId: string): Promise<void> {
+    const res = await ddb.deleteItem({
+        TableName: userKeysTable,
+        Key: { user_id: { S: userId } },
+        ReturnValues: "ALL_OLD",
+    });
+    const apiKey = res.Attributes?.api_key.S;
+    if (!apiKey) {
+        console.error(`No API key found for user ${userId} while trying to delete their apiKey`);
+        return;
+    }
+    await ddb.deleteItem({
+        TableName: apiKeysTable,
+        Key: { api_key: { S: apiKey } },
+    });
 }
 
 export async function createApiKey(

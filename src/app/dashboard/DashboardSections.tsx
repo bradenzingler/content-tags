@@ -18,14 +18,14 @@ export default function DashboardSections({
 	apiKeyInfo,
 	createNewKey,
 	regenerateKey,
-    stripeCustomer,
+    currentTier,
 	stripePortalSessionUrl,
     hasActiveSubscription,
 }: {
 	apiKeyInfo: ApiKeyInfo | null;
 	createNewKey: () => Promise<ApiKeyInfo>;
 	regenerateKey: (apiKey: string, userId: string) => Promise<ApiKeyInfo>;
-    stripeCustomer: Stripe.Customer;
+    currentTier: ApiKeyTier;
 	stripePortalSessionUrl: string;
     hasActiveSubscription: boolean;
 }) {
@@ -111,7 +111,7 @@ export default function DashboardSections({
 					</section>
 				) : (
 					<BillingSection
-                        currentTier={stripeCustomer.metadata.tier as ApiKeyTier}
+                        currentTier={currentTier}
                         stripePortalUrl={stripePortalSessionUrl}
 						apiKeyInfo={apiKeyResponse}
 					/>

@@ -1,4 +1,4 @@
-import { getUserApiKey, createApiKey, getApiKeyInfo, regenerateKey } from "@/lib/ddb";
+import { getUserApiKey, createApiKey, getApiKeyInfo, regenerateKey, ApiKeyTier } from "@/lib/ddb";
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import DashboardSections from "./DashboardSections";
 import { generateApiKey } from "@/lib/generateApiKeys";
@@ -59,7 +59,7 @@ export default async function DashboardPage() {
                 regenerateKey={regenerateApiKey}
                 createNewKey={createNewKey}
                 apiKeyInfo={apiKeyInfo}
-                stripeCustomer={customer}
+                currentTier={customer.metadata.tier as ApiKeyTier}
                 stripePortalSessionUrl={stripeSession.url}
                 hasActiveSubscription={hasActiveSubscription}
             />

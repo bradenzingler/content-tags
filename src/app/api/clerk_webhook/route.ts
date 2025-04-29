@@ -15,19 +15,22 @@ export async function POST(req: NextRequest) {
                 { status: 400 }
             );
         }
-
+        const authClient = await clerkClient();
 		if (eventType === "user.created") {
-			const authClient = await clerkClient();
 			const newCustomer = await stripe.customers.create({
                 email: evt.data.email_addresses[0].email_address,
-                name: `${evt.data.first_name} ${evt.data.last_name}`,
                 metadata: { userId: id }
             });
 			await authClient.users.updateUserMetadata(id, {
 				privateMetadata: { stripeId: newCustomer.id },
 			});
             return NextResponse.json({ message: "user created successfully" }, { status: 200 });
-		}
+		} else if (eventType === "user.deleted") {
+            const user = await authClient.users.getUser(id);
+            const stripeId = user.privateMetadata.stripeId as string;
+            if (!stripeId) return;
+            await stripe.customers.del(stripeId);
+        }
 	} catch (err) {
 		console.error("An error occurred: ", err);
 		return NextResponse.json(

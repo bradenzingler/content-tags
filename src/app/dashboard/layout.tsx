@@ -14,7 +14,7 @@ export default async function DashboardLayout({
 	}
 
 	return (
-		<div className="flex flex-col gap-8 md:flex-row md:gap-0 w-11/12 items-start mx-auto mt-28">
+		<div className="flex flex-col justify-center gap-8 md:flex-row md:gap-0 w-11/12 items-start mx-auto mt-28">
 			<DashboardSideNav />
 			{children}
 		</div>

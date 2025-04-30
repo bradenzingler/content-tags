@@ -6,7 +6,7 @@ export default async function ApiKeyPage() {
 	const user = await auth();
 	const apiKey = await getUserApiKey(user.userId!);
 	return (
-		<section className="flex flex-col w-11/12 mx-8">
+		<section className="flex flex-col md:w-1/2 md:mx-8">
 			<h1 className="text-white text-2xl tracking-tight font-semibold">
 				API Key
 			</h1>

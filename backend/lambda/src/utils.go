@@ -117,3 +117,18 @@ func parseImageData(req events.APIGatewayProxyRequest) (string, error) {
 
 	return requestBody.ImageUrl, nil
 }
+
+func convertTierToMaxUsagePerMonth(tier string) int {
+	switch tier {
+	case "free":
+		return 50
+	case "startup":
+		return 5000
+	case "growth":
+		return 10000 
+	case "scale":
+		return 100000
+	default:
+		return 50
+	}
+}

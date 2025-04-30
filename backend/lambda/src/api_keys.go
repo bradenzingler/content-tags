@@ -45,7 +45,7 @@ type ApiKeyInfo struct {
 	LastUsed      int64
 	RequestCounts []time.Time // For rate limiting
 	NextRefill    time.Time
-	Tier          string // startup, growth, scale
+	Tier          string // free, startup, growth, scale
 	Active        bool
 	sync.Mutex
 }
@@ -135,13 +135,6 @@ func isValidApiKey(ctx context.Context, apiKey string) (isValid bool, key *ApiKe
 	}
 	keyInfo.RequestCounts = recentRequests
 
-	// Log the current request count for debugging
-	log.Printf("INFO - API key %s: Current request count: %d, Rate limit: %d",
-		apiKey[:8], len(keyInfo.RequestCounts), keyInfo.RateLimit)
-
-	// Check rate limit - this current request counts as one request too
-	// If we have 9 recent requests and the limit is 10, we should allow this request (the 10th)
-	// But if we have 10 recent requests and the limit is 10, we should deny this request (the 11th)
 	if len(keyInfo.RequestCounts) >= keyInfo.RateLimit {
 		log.Printf("WARN - API key %s exceeded rate limit: %d requests in the last minute (limit: %d)",
 			apiKey[:8], len(keyInfo.RequestCounts), keyInfo.RateLimit)
@@ -153,6 +146,13 @@ func isValidApiKey(ctx context.Context, apiKey string) (isValid bool, key *ApiKe
 	keyInfo.TotalUsage += USAGE_COST_PER_REQUEST
 	keyInfo.LastUsed = now.Unix()
 	keyInfo.RequestCounts = append(keyInfo.RequestCounts, now)
+
+	maxRequests := convertTierToMaxUsagePerMonth(keyInfo.Tier)
+	if keyInfo.TotalUsage > maxRequests {
+		log.Printf("WARN - API key %s exceeded total usage: %d requests (limit: %d)",
+			apiKey[:8], keyInfo.TotalUsage, maxRequests)
+		return false, nil, 402, fmt.Errorf("total usage exceeded")
+	}
 
 	// Log the updated request count
 	log.Printf("INFO - API key %s: Updated request count: %d (including current request)",

@@ -31,11 +31,11 @@ export function getTierRateLimit(tier: ApiKeyTier) {
 export function getPlanCost(planName: ApiKeyTier) {
     switch (planName) {
         case "startup":
-            return 10;
+            return 30;
         case "growth": 
             return 79;
         case "scale":
-            return 149;
+            return 209;
         case "free":
             return 0;
         default:

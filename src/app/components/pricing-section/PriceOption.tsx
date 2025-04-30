@@ -1,5 +1,6 @@
-"use client";
-
+import { getPlanCost } from "@/app/utils";
+import { ApiKeyTier } from "@/lib/ddb";
+import { stripe } from "@/lib/stripe";
 import Link from "next/link";
 import React from "react";
 import { FaArrowRight, FaCheck } from "react-icons/fa";
@@ -14,6 +15,8 @@ type PriceOptionProps = {
 	isPopular?: boolean;
 	href: string;
 };
+
+
 
 export default function PriceOption({
 	title,

@@ -1,5 +1,6 @@
 import UsageBar from "@/app/components/dashboard_sections/dashboard/UsageBar";
 import { createOrGetUserApiKeyInfo } from "@/lib/ddb";
+import { stripe } from "@/lib/stripe";
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import Link from "next/link";
 import { FaArrowRight, FaExternalLinkAlt } from "react-icons/fa";
@@ -11,20 +12,26 @@ export default async function BillingPage() {
 	const stripeId = clerkUser.privateMetadata.stripeId as string;
 	const apiKeyInfo = await createOrGetUserApiKeyInfo(user.userId!, stripeId);
 
+    const session = await stripe.billingPortal.sessions.create({
+        customer: stripeId,
+        return_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/billing`,
+    });
+
 	return (
 		<section className="flex w-full flex-col md:mx-8">
 			<header className="flex items-center justify-between">
 				<h1 className="text-white text-2xl tracking-tight font-semibold">
 					Billing
 				</h1>
-				<button
+				<Link
+                    href={session.url}
 					className="cursor-pointer flex items-center gap-2
                         rounded-md px-4 py-1 bg-teal-500/85 text-white
                          hover:bg-teal-500/90 font-semibold active:scale-105"
 				>
 					Manage subscription
 					<FaExternalLinkAlt />
-				</button>
+				</Link>
 			</header>
 			<section className="mt-4">
 				<UsageBar apiKeyInfo={apiKeyInfo} />

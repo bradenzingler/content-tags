@@ -57,7 +57,7 @@ export default function NavBar() {
 				<div className="flex items-center gap-4">
 					{isSignedIn && (
 						<Link
-							href={"/dashboard"}
+							href={"/dashboard/usage"}
 							title="Dashboard"
 							className="text-white/85 hover:text-white"
 						>

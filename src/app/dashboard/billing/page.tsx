@@ -12,7 +12,7 @@ export default async function BillingPage() {
 	const apiKeyInfo = await createOrGetUserApiKeyInfo(user.userId!, stripeId);
 
 	return (
-		<section className="flex flex-col w-full md:w-1/2 md:mx-8">
+		<section className="flex w-full flex-col md:mx-8">
 			<header className="flex items-center justify-between">
 				<h1 className="text-white text-2xl tracking-tight font-semibold">
 					Billing

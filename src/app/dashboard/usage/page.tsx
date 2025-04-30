@@ -11,7 +11,7 @@ export default async function UsagePage() {
 	const apiKeyInfo = await createOrGetUserApiKeyInfo(user.userId!, stripeId);
 
 	return (
-		<section className="flex flex-col md:w-1/2 md:mx-8">
+		<section className="flex w-full flex-col md:mx-8">
 			<h1 className="text-white text-2xl tracking-tight font-semibold">
 				Dashboard
 			</h1>

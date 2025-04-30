@@ -1,5 +1,5 @@
 import { auth } from "@clerk/nextjs/server";
-import DashboardSideNav from "../components/dashboard_sections/DashboardSideNav";
+import DashboardSideNav from "../components/dashboard_sections/dashboard/DashboardSideNav";
 import { redirect } from "next/navigation";
 
 export default async function DashboardLayout({

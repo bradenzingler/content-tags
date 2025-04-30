@@ -87,73 +87,84 @@ export async function getApiKeyInfo(
 }
 
 export async function resetKeyUsage(apiKey: ApiKeyInfo): Promise<ApiKeyInfo> {
-    const now = Date.now();
-    
-    // Only reset if the current time is after the next refill time
-    if (now >= apiKey.nextRefill) {
-        // First, verify the key still exists in the database
-        try {
-            const keyExists = await verifyKeyExists(apiKey.apiKey);
-            if (!keyExists) {
-                console.error(`API key ${apiKey.apiKey.substring(0, 5)}... no longer exists in the database`);
-                return apiKey; // Return original key info without updating
-            }
-            
-            // Calculate the new next refill date (30 days from now)
-            const nextRefillDate = new Date();
-            nextRefillDate.setDate(nextRefillDate.getDate() + 30);
-            const nextRefillTimestamp = nextRefillDate.getTime();
-            
-            // Get the appropriate rate limit based on the tier
-            const rateLimit = getTierRateLimit(apiKey.tier);
-            
-            // Update the key in DynamoDB with a condition that it must exist
-            await ddb.updateItem({
-                TableName: apiKeysTable,
-                Key: { api_key: { S: apiKey.apiKey } },
-                UpdateExpression: "SET next_refill = :nextRefill, total_usage = :totalUsage, rate_limit = :rateLimit",
-                ExpressionAttributeValues: {
-                    ":nextRefill": { N: nextRefillTimestamp.toString() },
-                    ":totalUsage": { N: "0" },
-                    ":rateLimit": { N: rateLimit.toString() }
-                },
-                ConditionExpression: "attribute_exists(api_key)" // Only update if the item exists
-            });
-            
-            // Return the updated key info
-            return {
-                ...apiKey,
-                nextRefill: nextRefillTimestamp,
-                totalUsage: 0,
-                rateLimit: rateLimit
-            };
-        } catch (error: any) {
-            console.error("Error during key reset:", error);
-            // If we got a ConditionalCheckFailedException, the key doesn't exist anymore
-            if (error.name === 'ConditionalCheckFailedException') {
-                console.warn(`API key ${apiKey.apiKey.substring(0, 5)}... no longer exists in the database`);
-            }
-            return apiKey; // Return original info without modifying
-        }
-    }
-    
-    // If we're not resetting, return the original key info
-    return apiKey;
+	const now = Date.now();
+
+	// Only reset if the current time is after the next refill time
+	if (now >= apiKey.nextRefill) {
+		// First, verify the key still exists in the database
+		try {
+			const keyExists = await verifyKeyExists(apiKey.apiKey);
+			if (!keyExists) {
+				console.error(
+					`API key ${apiKey.apiKey.substring(
+						0,
+						5
+					)}... no longer exists in the database`
+				);
+				return apiKey; // Return original key info without updating
+			}
+
+			// Calculate the new next refill date (30 days from now)
+			const nextRefillDate = new Date();
+			nextRefillDate.setDate(nextRefillDate.getDate() + 30);
+			const nextRefillTimestamp = nextRefillDate.getTime();
+
+			// Get the appropriate rate limit based on the tier
+			const rateLimit = getTierRateLimit(apiKey.tier);
+
+			// Update the key in DynamoDB with a condition that it must exist
+			await ddb.updateItem({
+				TableName: apiKeysTable,
+				Key: { api_key: { S: apiKey.apiKey } },
+				UpdateExpression:
+					"SET next_refill = :nextRefill, total_usage = :totalUsage, rate_limit = :rateLimit",
+				ExpressionAttributeValues: {
+					":nextRefill": { N: nextRefillTimestamp.toString() },
+					":totalUsage": { N: "0" },
+					":rateLimit": { N: rateLimit.toString() },
+				},
+				ConditionExpression: "attribute_exists(api_key)", // Only update if the item exists
+			});
+
+			// Return the updated key info
+			return {
+				...apiKey,
+				nextRefill: nextRefillTimestamp,
+				totalUsage: 0,
+				rateLimit: rateLimit,
+			};
+		} catch (error: any) {
+			console.error("Error during key reset:", error);
+			// If we got a ConditionalCheckFailedException, the key doesn't exist anymore
+			if (error.name === "ConditionalCheckFailedException") {
+				console.warn(
+					`API key ${apiKey.apiKey.substring(
+						0,
+						5
+					)}... no longer exists in the database`
+				);
+			}
+			return apiKey; // Return original info without modifying
+		}
+	}
+
+	// If we're not resetting, return the original key info
+	return apiKey;
 }
 
 // Helper function to verify if a key exists in the database
 async function verifyKeyExists(apiKey: string): Promise<boolean> {
-    try {
-        const response = await ddb.getItem({
-            TableName: apiKeysTable,
-            Key: { api_key: { S: apiKey } },
-            ProjectionExpression: "api_key" // Only retrieve the key attribute to minimize data transfer
-        });
-        return !!response.Item; // Return true if the item exists
-    } catch (error) {
-        console.error("Error verifying key exists:", error);
-        return false;
-    }
+	try {
+		const response = await ddb.getItem({
+			TableName: apiKeysTable,
+			Key: { api_key: { S: apiKey } },
+			ProjectionExpression: "api_key", // Only retrieve the key attribute to minimize data transfer
+		});
+		return !!response.Item; // Return true if the item exists
+	} catch (error) {
+		console.error("Error verifying key exists:", error);
+		return false;
+	}
 }
 
 export async function regenerateKey(
@@ -167,7 +178,7 @@ export async function regenerateKey(
 		Key: { api_key: { S: oldApiKey } },
 		ReturnValues: "ALL_OLD",
 	});
-	
+
 	// create new key in key table and transfer old key attributes
 	await ddb.putItem({
 		TableName: apiKeysTable,
@@ -180,7 +191,9 @@ export async function regenerateKey(
 			next_refill: { N: oldKeyResponse.Attributes?.next_refill.N ?? "0" },
 			tier: { S: oldKeyResponse.Attributes?.tier.S ?? "free" },
 			active: { BOOL: oldKeyResponse.Attributes?.active.BOOL ?? true },
-            request_counts: { L: oldKeyResponse.Attributes?.request_counts.L ?? [] },
+			request_counts: {
+				L: oldKeyResponse.Attributes?.request_counts.L ?? [],
+			},
 		},
 	});
 
@@ -209,58 +222,66 @@ export async function regenerateKey(
 	};
 }
 
-export async function updateUserTier(userId: string, newTier: ApiKeyTier): Promise<boolean> {
-    try {
-        // First, get the user's API key
-        const apiKey = await getUserApiKey(userId);
-        if (!apiKey) {
-            console.error(`No API key found for user ${userId}`);
-            return false;
-        }
-        
-        // Get the new rate limit based on the tier
-        const newRateLimit = getTierRateLimit(newTier);
-        
-        // Update the API key with the new tier and rate limit
-        await ddb.updateItem({
-            TableName: apiKeysTable,
-            Key: { api_key: { S: apiKey } },
-            UpdateExpression: "SET tier = :tier, rate_limit = :rateLimit",
-            ExpressionAttributeValues: {
-                ":tier": { S: newTier },
-                ":rateLimit": { N: newRateLimit.toString() }
-            },
-            ConditionExpression: "attribute_exists(api_key)" // Only update if the key exists
-        });
-        
-        console.log(`Successfully updated tier for user ${userId} to ${newTier} with rate limit ${newRateLimit}`);
-        return true;
-    } catch (error) {
-        console.error(`Error updating tier for user ${userId}:`, error);
-        return false;
-    }
+export async function updateUserTier(
+	userId: string,
+	newTier: ApiKeyTier
+): Promise<boolean> {
+	try {
+		// First, get the user's API key
+		const apiKey = await getUserApiKey(userId);
+		if (!apiKey) {
+			console.error(`No API key found for user ${userId}`);
+			return false;
+		}
+
+		// Get the new rate limit based on the tier
+		const newRateLimit = getTierRateLimit(newTier);
+
+		// Update the API key with the new tier and rate limit
+		await ddb.updateItem({
+			TableName: apiKeysTable,
+			Key: { api_key: { S: apiKey } },
+			UpdateExpression: "SET tier = :tier, rate_limit = :rateLimit",
+			ExpressionAttributeValues: {
+				":tier": { S: newTier },
+				":rateLimit": { N: newRateLimit.toString() },
+			},
+			ConditionExpression: "attribute_exists(api_key)", // Only update if the key exists
+		});
+
+		console.log(
+			`Successfully updated tier for user ${userId} to ${newTier} with rate limit ${newRateLimit}`
+		);
+		return true;
+	} catch (error) {
+		console.error(`Error updating tier for user ${userId}:`, error);
+		return false;
+	}
 }
 
 export async function deleteApiKey(userId: string): Promise<void> {
-    const res = await ddb.deleteItem({
-        TableName: userKeysTable,
-        Key: { user_id: { S: userId } },
-        ReturnValues: "ALL_OLD",
-    });
-    const apiKey = res.Attributes?.api_key.S;
-    if (!apiKey) {
-        console.error(`No API key found for user ${userId} while trying to delete their apiKey`);
-        return;
-    }
-    await ddb.deleteItem({
-        TableName: apiKeysTable,
-        Key: { api_key: { S: apiKey } },
-    });
+	const res = await ddb.deleteItem({
+		TableName: userKeysTable,
+		Key: { user_id: { S: userId } },
+		ReturnValues: "ALL_OLD",
+	});
+	const apiKey = res.Attributes?.api_key.S;
+	if (!apiKey) {
+		console.error(
+			`No API key found for user ${userId} while trying to delete their apiKey`
+		);
+		return;
+	}
+	await ddb.deleteItem({
+		TableName: apiKeysTable,
+		Key: { api_key: { S: apiKey } },
+	});
 }
 
 export async function createApiKey(
 	userId: string,
 	apiKey: string,
+	stripeId: string,
 	tier: ApiKeyTier
 ): Promise<ApiKeyInfo> {
 	const rateLimit = getTierRateLimit(tier);
@@ -286,6 +307,8 @@ export async function createApiKey(
 		Item: {
 			user_id: { S: userId },
 			api_key: { S: apiKey },
+			stripe_id: { S: stripeId },
+			tier: { S: tier },
 		},
 	});
 	return {
@@ -315,18 +338,23 @@ export type ApiKeyInfo = {
 
 export type ApiKeyTier = "free" | "startup" | "growth" | "scale";
 
-export async function createOrGetUserApiKeyInfo(userId: string): Promise<ApiKeyInfo> {
+export async function createOrGetUserApiKeyInfo(
+	userId: string,
+	stripeId: string
+): Promise<ApiKeyInfo> {
 	const existingApiKey = await getUserApiKey(userId);
 	let apiKeyInfo: ApiKeyInfo;
 	if (!existingApiKey) {
 		const newApiKey = generateApiKey();
-		apiKeyInfo = await createApiKey(userId, newApiKey, "free");
+		apiKeyInfo = await createApiKey(userId, newApiKey, stripeId, "free");
 	} else {
 		const existingKeyInfo = await getApiKeyInfo(existingApiKey);
 		if (!existingKeyInfo) {
-            throw new Error("Failed to retrieve existing API key info after creating a user");
+			throw new Error(
+				"Failed to retrieve existing API key info after creating a user"
+			);
 		}
 		apiKeyInfo = existingKeyInfo;
 	}
-    return apiKeyInfo;
+	return apiKeyInfo;
 }

@@ -1,3 +1,4 @@
+import { deleteApiKey } from "@/lib/ddb";
 import { stripe } from "@/lib/stripe";
 import { clerkClient } from "@clerk/nextjs/server";
 import { verifyWebhook } from "@clerk/nextjs/webhooks";
@@ -30,6 +31,7 @@ export async function POST(req: NextRequest) {
             const stripeId = user.privateMetadata.stripeId as string;
             if (!stripeId) return;
             await stripe.customers.del(stripeId);
+            await deleteApiKey(id);
         }
 	} catch (err) {
 		console.error("An error occurred: ", err);

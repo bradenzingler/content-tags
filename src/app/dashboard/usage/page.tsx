@@ -1,11 +1,14 @@
 import UsageBar from "@/app/components/dashboard_sections/dashboard/UsageBar";
 import UsageGraph from "@/app/components/dashboard_sections/dashboard/UsageGraph";
 import { createOrGetUserApiKeyInfo } from "@/lib/ddb";
-import { auth } from "@clerk/nextjs/server";
+import { auth, clerkClient } from "@clerk/nextjs/server";
 
 export default async function UsagePage() {
 	const user = await auth();
-	const apiKeyInfo = await createOrGetUserApiKeyInfo(user.userId!);
+	const client = await clerkClient();
+	const clerkUser = await client.users.getUser(user.userId!);
+	const stripeId = clerkUser.privateMetadata.stripeId as string;
+	const apiKeyInfo = await createOrGetUserApiKeyInfo(user.userId!, stripeId);
 
 	return (
 		<section className="flex flex-col w-11/12 mx-8">

@@ -6,6 +6,8 @@ export function convertTierToUsageAmount(tier: ApiKeyTier) {
         return 10000;
     } else if (tier === "scale") {
         return 100000;
+    } else if (tier === "free") {
+        return 1000;
     } else {
         return 100;
     }
@@ -18,6 +20,8 @@ export function getTierRateLimit(tier: ApiKeyTier) {
         return 120;
     } else if (tier === "scale") {
         return 200;
+    } else if (tier === "free") {
+        return 15;
     } else {
         console.error("Somehow an invalid api key tier, defaulting to startup.");
         return 60;
@@ -32,6 +36,8 @@ export function getPlanCost(planName: ApiKeyTier) {
             return 79;
         case "scale":
             return 149;
+        case "free":
+            return 0;
         default:
             return 0;
     }

@@ -27,11 +27,15 @@ export async function POST(req: NextRequest) {
 			});
             return NextResponse.json({ message: "user created successfully" }, { status: 200 });
 		} else if (eventType === "user.deleted") {
-            const user = await authClient.users.getUser(id);
-            const stripeId = user.privateMetadata.stripeId as string;
-            if (!stripeId) return;
-            await stripe.customers.del(stripeId);
+            // Remove the user keys from our DDB
             await deleteApiKey(id);
+
+            // Remove the customer object for the user from Stripe
+            const customer = await stripe.customers.search({ query: `metadata["userId"]:"${id}"` });
+            const customerId = customer.data[0]?.id;
+            if (!customerId) return;
+            await stripe.customers.del(customerId);
+            return NextResponse.json({ message: "user deleted successfully" }, { status: 200 });
         }
 	} catch (err) {
 		console.error("An error occurred: ", err);

@@ -44,7 +44,7 @@ export const handler = async (event: APIGatewayRequestAuthorizerEvent): Promise<
         return unauthorized("Rate limit exceeded");
     }
 
-    const nextRefill = response.Item.next_refill.S;
+    const nextRefill = response.Item.next_refill.N;
     if (!nextRefill) {
         console.error("The next refill is undefined!");
         return unauthorized("An error occurred. Please try again.")

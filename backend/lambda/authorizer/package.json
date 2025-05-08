@@ -1,22 +1,24 @@
 {
-  "name": "authorizer",
-  "version": "1.0.0",
-  "main": "index.js",
-  "scripts": {
-    "build": "esbuild src/index.ts --bundle --platform=node --target=node22 --outdir=dist",
-    "deploy": "aws lambda update-function-code --function-name content-tags-authorizer --zip-file fileb://dist/authorizer.zip",
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
-  "devDependencies": {
-    "@types/aws-lambda": "^8.10.149",
-    "esbuild": "^0.25.4",
-    "typescript": "^5.8.3"
-  },
-  "dependencies": {
-    "aws-sdk": "^2.1692.0"
-  }
+    "name": "authorizer",
+    "version": "1.0.0",
+    "main": "index.js",
+    "scripts": {
+        "prebuild": "rm -rf dist",
+        "build": "esbuild src/* --bundle --minify --platform=node --target=node22 --outdir=dist",
+        "postbuild": "cd dist && zip -r authorizer.zip . && cd ..",
+        "deploy": "npm run build && aws lambda update-function-code --function-name content-tags-authorizer --zip-file fileb://dist/authorizer.zip",
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "description": "",
+    "devDependencies": {
+        "@types/aws-lambda": "^8.10.149",
+        "esbuild": "^0.25.4",
+        "typescript": "^5.8.3"
+    },
+    "dependencies": {
+        "aws-sdk": "^2.1692.0"
+    }
 }

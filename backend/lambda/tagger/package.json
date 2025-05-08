@@ -1,0 +1,24 @@
+{
+  "name": "tagger",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prebuild": "rm -rf dist",
+    "build": "esbuild src/* --bundle --minify --platform=node --target=node22 --outdir=dist",
+    "postbuild": "cd dist && zip -r content-tags.zip . && cd ..",
+    "deploy": "npm run build && aws lambda update-function-code --function-name content-tags --zip-file fileb://dist/content-tags.zip"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.149",
+    "esbuild": "^0.25.4",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "aws-sdk": "^2.1692.0"
+  }
+}

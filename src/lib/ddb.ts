@@ -222,6 +222,22 @@ export async function regenerateKey(
 	};
 }
 
+export async function pauseApiKey(userId: string) {
+    const apiKey = await getUserApiKey(userId);
+    if (!apiKey) {
+        console.error(`No API key found for user ${userId}`);
+        return;
+    }
+    await ddb.updateItem({
+        TableName: apiKeysTable,
+        Key: { api_key: { S: apiKey } },
+        UpdateExpression: "SET active = :active",
+        ExpressionAttributeValues: {
+            ":active": { BOOL: false },
+        },
+    });
+}
+
 export async function updateUserTier(
 	userId: string,
 	newTier: ApiKeyTier
@@ -248,6 +264,15 @@ export async function updateUserTier(
 			},
 			ConditionExpression: "attribute_exists(api_key)", // Only update if the key exists
 		});
+
+        await ddb.updateItem({
+            TableName: userKeysTable,
+            Key: { user_id: { S: userId } },
+            UpdateExpression: "SET tier = :tier",
+            ExpressionAttributeValues: {
+                ":tier": { S: newTier },
+            },
+        })
 
 		console.log(
 			`Successfully updated tier for user ${userId} to ${newTier} with rate limit ${newRateLimit}`

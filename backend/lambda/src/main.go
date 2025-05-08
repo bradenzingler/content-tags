@@ -33,16 +33,10 @@ type RequestBody struct {
 
 func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 
-	imageUrl, err := parseImageData(request)
-	if err != nil {
-		return errorResponse("invalid_request", err.Error(), 400)
-	}
-
 	apiKey, err := getApiKeyFromHeaders(request)
 	if err != nil {
 		return errorResponse("invalid_api_key", err.Error(), 401)
 	}
-
 	valid, apiKeyInfo, status, err := isValidApiKey(ctx, apiKey)
 	if err != nil {
 		return errorResponse("invalid_api_key", err.Error(), status)
@@ -51,9 +45,13 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		fmt.Printf("The api key info was null, but the error was also null")
 		return errorResponse("internal_error", "an internal error occurred. you will not be charged for this request", 500)
 	}
-
 	if !valid {
 		return errorResponse("invalid_api_key", "api key is invalid", 401)
+	}
+
+	imageUrl, err := parseImageData(request)
+	if err != nil {
+		return errorResponse("invalid_request", err.Error(), 400)
 	}
 
 	apiKeyInfo.Lock()

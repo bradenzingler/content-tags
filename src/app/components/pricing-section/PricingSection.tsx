@@ -2,7 +2,6 @@ import { auth, clerkClient } from "@clerk/nextjs/server";
 import React from "react";
 import PriceOption from "./PriceOption";
 import { stripe } from "@/lib/stripe";
-import { getPlanCost } from "@/app/utils";
 import { ApiKeyTier } from "@/lib/ddb";
 
 const priceMap: Record<ApiKeyTier, string> = {

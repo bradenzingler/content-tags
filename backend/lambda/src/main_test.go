@@ -49,6 +49,7 @@ func TestHandlerWithInvalidInputs(t *testing.T) {
 			name: "Invalid JSON",
 			request: events.APIGatewayProxyRequest{
 				Body: `{"image_url": invalid`,
+				HTTPMethod: "POST",
 			},
 			expectedStatusCode: 400,
 			expectedErrorCode:  "invalid_request",
@@ -57,6 +58,7 @@ func TestHandlerWithInvalidInputs(t *testing.T) {
 			name: "Missing image_url",
 			request: events.APIGatewayProxyRequest{
 				Body: `{"some_field": "value"}`,
+				HTTPMethod: "POST",
 			},
 			expectedStatusCode: 400,
 			expectedErrorCode:  "invalid_request",
@@ -66,6 +68,7 @@ func TestHandlerWithInvalidInputs(t *testing.T) {
 			request: events.APIGatewayProxyRequest{
 				Body:    `{"image_url": "https://example.com/image.jpg"}`,
 				Headers: map[string]string{},
+				HTTPMethod: "POST",
 			},
 			expectedStatusCode: 401,
 			expectedErrorCode:  "invalid_api_key",

@@ -93,6 +93,13 @@ func errorResponse(code string, description string, status int) (events.APIGatew
 }
 
 func parseImageData(req events.APIGatewayProxyRequest) (string, error) {
+	if req.HTTPMethod == "GET" {
+		if req.QueryStringParameters["image_url"] == "" {
+			return "", fmt.Errorf("the image_url query parameter is missing")
+		}
+		return req.QueryStringParameters["image_url"], nil
+	}
+
 	var requestBody RequestBody
 	err := json.Unmarshal([]byte(req.Body), &requestBody)
 	if err != nil {

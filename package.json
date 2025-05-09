@@ -10,9 +10,7 @@
     "lint": "next lint",
     "test": "vitest",
     "deploy-authorizer": "cd backend/lambda/authorizer && npm run deploy",
-    "test-lambda": "cd backend/lambda/src && go test",
-    "build-lambda": "npm run test-lambda && cd backend/lambda/src && mkdir -p dist && GOOS=linux GOARCH=amd64 go build -o dist/bootstrap -ldflags='-s -w' $(find . -name '*.go' ! -name '*_test.go') && cd dist/ && zip bootstrap.zip bootstrap && cd -",
-    "deploy-lambda": "npm run build-lambda && aws lambda update-function-code --function-name content-tags --zip-file fileb://backend/lambda/src/dist/bootstrap.zip"
+    "deploy-tagger": "cd backend/lambda/tagger && npm run deploy"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.788.0",

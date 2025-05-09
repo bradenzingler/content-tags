@@ -3,14 +3,15 @@ import { error, success } from "./responses";
 import { Event } from "./types";
 import { storeImageInS3 } from "./s3";
 import { getTags } from "./openai";
+import { updateApiKeyUsage } from "./ddb";
 
 const cache = new Map<string, string[]>();
 
 export const handler = async (event: Event) => {
 	console.log("Received event:", JSON.stringify(event));
-	const apiKeyInfo = event.requestContext.authorizer;
+	const apiKeyInfo = event.requestContext.authorizer.lambda;
 
-	if (!apiKeyInfo) {
+	if (!apiKeyInfo || !apiKeyInfo.apiKey) {
 		console.error(
 			"API key info not found in event even after passing through authorizer"
 		);
@@ -52,11 +53,17 @@ export const handler = async (event: Event) => {
     }
 
     const imageHash = getMD5Hash(imageUrl.slice(0, 100));
-    if (cache.has(imageHash)) return success({ tags: cache.get(imageHash) });
+    if (cache.has(imageHash)) {
+        updateApiKeyUsage(apiKeyInfo.apiKey)
+            .catch(err => console.error('Error updating API key usage:', err));
+        return success({ tags: cache.get(imageHash) });
+    }
 
     const presignedUrl = await storeImageInS3(imageData, imageHash);
     const tags = await getTags(presignedUrl);
     cache.set(imageHash, tags);
-
+    
+    updateApiKeyUsage(apiKeyInfo.apiKey)
+        .catch(err => console.error('Error updating API key usage:', err));
 	return success({ tags });
 };

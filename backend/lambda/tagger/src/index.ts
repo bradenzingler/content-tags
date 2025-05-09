@@ -1,6 +1,8 @@
-import { isValidUrl, parseImageUrl } from "./utils";
+import { fetchImage, getMD5Hash, isValidUrl, parseImageUrl } from "./utils";
 import { error } from "./responses";
 import { Event } from "./types";
+import { storeImageInS3 } from "./s3";
+import { getTags } from "./openai";
 
 export const handler = async (event: Event) => {
 	console.log("Received event:", JSON.stringify(event));
@@ -33,10 +35,23 @@ export const handler = async (event: Event) => {
 	if (!isValidUrl(imageUrl)) {
 		return error(
 			400,
-			"Invalid image_url. Make sure the URL is served from https and has a valid structure.",
+			"Invalid image_url. Make sure the URL protocol is 'https:' or 'data:' and has a valid structure.",
 			"INVALID_IMAGE_URL"
 		);
 	}
+
+    const imageData = await fetchImage(imageUrl);
+    if (!imageData) {
+        return error(
+            400,
+            "Failed to fetch image data. Make sure the URL is valid and accessible.",
+            "INVALID_IMAGE_URL"
+        );
+    }
+    const imageHash = getMD5Hash(imageUrl.slice(0, 100));
+    const presignedUrl = await storeImageInS3(imageData, imageHash);
+
+    const tags = await getTags(presignedUrl);
 
 	return {
 		statusCode: 200,

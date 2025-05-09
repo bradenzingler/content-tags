@@ -12,3 +12,10 @@ export function error(status: number, errorMsg: string, errorCode: ErrorCode) {
         }),
     }
 }
+
+export function success(data: any) {
+    return {
+        statusCode: 200,
+        body: JSON.stringify(data),
+    }
+}

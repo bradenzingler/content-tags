@@ -1,8 +1,10 @@
 import { fetchImage, getMD5Hash, isValidUrl, parseImageUrl } from "./utils";
-import { error } from "./responses";
+import { error, success } from "./responses";
 import { Event } from "./types";
 import { storeImageInS3 } from "./s3";
 import { getTags } from "./openai";
+
+const cache = new Map<string, string[]>();
 
 export const handler = async (event: Event) => {
 	console.log("Received event:", JSON.stringify(event));
@@ -48,13 +50,13 @@ export const handler = async (event: Event) => {
             "INVALID_IMAGE_URL"
         );
     }
+
     const imageHash = getMD5Hash(imageUrl.slice(0, 100));
+    if (cache.has(imageHash)) return success({ tags: cache.get(imageHash) });
+    
     const presignedUrl = await storeImageInS3(imageData, imageHash);
-
     const tags = await getTags(presignedUrl);
+    cache.set(imageHash, tags);
 
-	return {
-		statusCode: 200,
-		body: JSON.stringify({ message: "Hello, world!" }),
-	};
+	return success({ tags });
 };

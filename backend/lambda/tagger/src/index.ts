@@ -53,7 +53,7 @@ export const handler = async (event: Event) => {
 
     const imageHash = getMD5Hash(imageUrl.slice(0, 100));
     if (cache.has(imageHash)) return success({ tags: cache.get(imageHash) });
-    
+
     const presignedUrl = await storeImageInS3(imageData, imageHash);
     const tags = await getTags(presignedUrl);
     cache.set(imageHash, tags);

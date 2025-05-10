@@ -54,7 +54,7 @@ export const handler = async (event: Event) => {
 
     const imageHash = getMD5Hash(imageUrl.slice(0, 100));
     if (cache.has(imageHash)) {
-        updateApiKeyUsage(apiKeyInfo.apiKey)
+        updateApiKeyUsage(apiKeyInfo.apiKey, apiKeyInfo.totalUsage, apiKeyInfo.requestCounts.split(","))
             .catch(err => console.error('Error updating API key usage:', err));
         return success({ tags: cache.get(imageHash) });
     }
@@ -63,7 +63,7 @@ export const handler = async (event: Event) => {
     const tags = await getTags(presignedUrl);
     cache.set(imageHash, tags);
     
-    updateApiKeyUsage(apiKeyInfo.apiKey)
-        .catch(err => console.error('Error updating API key usage:', err));
+    updateApiKeyUsage(apiKeyInfo.apiKey, apiKeyInfo.totalUsage, apiKeyInfo.requestCounts.split(","))
+            .catch(err => console.error('Error updating API key usage:', err));
 	return success({ tags });
 };

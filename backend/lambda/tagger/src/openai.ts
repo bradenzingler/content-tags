@@ -35,6 +35,6 @@ export async function getTags(imageUrl: string): Promise<string[]> {
     if (tags === INVALID_RESPONSE) {
         return [];
     }
-    const tagsArray = tags.split(",").map(tag => tag.trim());
+    const tagsArray = tags.split(",").map(tag => tag.trim().toLowerCase());
     return tagsArray.filter(tag => tag.length > 0);
 }

@@ -71,7 +71,7 @@ export default async function BillingPage() {
 						<span className="text-white">Rate Limit</span>
 						<span>
 							{apiKeyInfo.rateLimit.toLocaleString()}{" "}
-							requests/month
+							requests/minute
 						</span>
 					</div>
 				</div>

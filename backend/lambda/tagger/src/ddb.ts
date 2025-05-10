@@ -6,13 +6,14 @@ const ddb = new DynamoDB();
 export async function updateApiKeyUsage(
 	apiKey: string,
 	totalUsage: string,
-	requestCounts: string[],
+	requestCounts: string[]
 ): Promise<void> {
 	try {
 		const now = Date.now();
-        const mappedRequestCounts = requestCounts.map((count) => ({
-            N: count,   
-        }));
+
+		const mappedRequestCounts = requestCounts
+			.filter((count) => !isNaN(Number(count)) && count !== "")
+			.map((count) => ({ N: count }));
 
 		// Prepare update expression and attribute values
 		await ddb.updateItem({
@@ -21,13 +22,10 @@ export async function updateApiKeyUsage(
 			UpdateExpression:
 				"SET total_usage = :totalUsage, last_used = :lastUsed, request_counts = :requestCounts",
 			ExpressionAttributeValues: {
-				":totalUsage": { N: (totalUsage + 1).toString() },
+				":totalUsage": { N: (parseInt(totalUsage) + 1).toString() },
 				":lastUsed": { N: now.toString() },
 				":requestCounts": {
-					L: [
-						...mappedRequestCounts,
-						{ N: now.toString() },
-					],
+					L: [...mappedRequestCounts, { N: now.toString() }],
 				},
 			},
 			ConditionExpression: "attribute_exists(api_key)",

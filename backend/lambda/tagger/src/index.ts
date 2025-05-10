@@ -62,8 +62,10 @@ export const handler = async (event: Event) => {
     const presignedUrl = await storeImageInS3(imageData, imageHash);
     const tags = await getTags(presignedUrl);
     cache.set(imageHash, tags);
+
+    const requestCounts = apiKeyInfo.requestCounts ? apiKeyInfo.requestCounts.split(",") : [];
     
-    updateApiKeyUsage(apiKeyInfo.apiKey, apiKeyInfo.totalUsage, apiKeyInfo.requestCounts.split(","))
+    updateApiKeyUsage(apiKeyInfo.apiKey, apiKeyInfo.totalUsage, requestCounts)
             .catch(err => console.error('Error updating API key usage:', err));
 	return success({ tags });
 };
